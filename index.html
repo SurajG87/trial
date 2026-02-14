@@ -1,0 +1,3497 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.5, user-scalable=yes">
+    <title>Black Sheep Restaurants - Beverage Database (Cloud Sync)</title>
+    <!-- Font Awesome 6 -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <!-- SortableJS -->
+    <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
+    <!-- jsPDF -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <!-- html2canvas -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <!-- SheetJS for Excel import -->
+    <script src="https://cdn.sheetjs.com/xlsx-0.20.2/package/dist/xlsx.full.min.js"></script>
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
+    <style>
+        /* [All original styles remain exactly the same - keeping them identical for consistency] */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Inter', sans-serif;
+        }
+
+        .theme-orange {
+            --primary: #2C3E50;
+            --secondary: #34495E;
+            --accent: #E67E22;
+            --accent-light: #F39C12;
+            --accent-soft: rgba(230,126,34,0.1);
+            --accent-hover: #d35400;
+            --success: #27AE60;
+            --danger: #E74C3C;
+            --warning: #F1C40F;
+            --light: #ECF0F1;
+            --dark: #1E2B36;
+            --white: #FFFFFF;
+            --gray: #95A5A6;
+            --sidebar-width: 280px;
+            --profit: #27AE60;
+            --loss: #E74C3C;
+            --sheep-black: #1a1a1a;
+        }
+
+        .theme-blue {
+            --primary: #2C3E50;
+            --secondary: #34495E;
+            --accent: #3498db;
+            --accent-light: #5dade2;
+            --accent-soft: rgba(52,152,219,0.1);
+            --accent-hover: #2980b9;
+            --success: #27AE60;
+            --danger: #E74C3C;
+            --warning: #F1C40F;
+            --light: #ECF0F1;
+            --dark: #1E2B36;
+            --white: #FFFFFF;
+            --gray: #95A5A6;
+            --sidebar-width: 280px;
+            --profit: #27AE60;
+            --loss: #E74C3C;
+            --sheep-black: #1a1a1a;
+        }
+
+        body {
+            background: linear-gradient(135deg, #f5f7fa 0%, #e9ecef 100%);
+            min-height: 100vh;
+        }
+
+        .app-container {
+            display: flex;
+            min-height: 100vh;
+            position: relative;
+        }
+
+        /* Auth Modal Styles */
+        .auth-modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.8);
+            z-index: 5000;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .auth-modal.active {
+            display: flex;
+        }
+
+        .auth-content {
+            background: var(--white);
+            border-radius: 24px;
+            padding: 2rem;
+            max-width: 400px;
+            width: 90%;
+            text-align: center;
+        }
+
+        .auth-logo {
+            font-size: 3rem;
+            margin-bottom: 1rem;
+            color: var(--accent);
+        }
+
+        .auth-tabs {
+            display: flex;
+            gap: 1rem;
+            margin: 2rem 0 1.5rem;
+            border-bottom: 1px solid var(--light);
+        }
+
+        .auth-tab {
+            flex: 1;
+            padding: 0.75rem;
+            background: none;
+            border: none;
+            font-weight: 600;
+            color: var(--gray);
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .auth-tab.active {
+            color: var(--accent);
+            border-bottom: 2px solid var(--accent);
+        }
+
+        .auth-form {
+            display: none;
+        }
+
+        .auth-form.active {
+            display: block;
+        }
+
+        .auth-input {
+            width: 100%;
+            padding: 1rem;
+            margin: 0.5rem 0;
+            border: 1px solid var(--light);
+            border-radius: 12px;
+            font-size: 1rem;
+        }
+
+        .auth-input:focus {
+            outline: none;
+            border-color: var(--accent);
+        }
+
+        .auth-btn {
+            width: 100%;
+            padding: 1rem;
+            background: var(--accent);
+            color: white;
+            border: none;
+            border-radius: 12px;
+            font-weight: 600;
+            font-size: 1rem;
+            cursor: pointer;
+            margin: 1rem 0;
+            transition: all 0.3s ease;
+        }
+
+        .auth-btn:hover {
+            background: var(--accent-hover);
+            transform: scale(1.02);
+        }
+
+        .auth-error {
+            color: var(--danger);
+            font-size: 0.875rem;
+            margin: 0.5rem 0;
+        }
+
+        .sync-status {
+            position: fixed;
+            top: 1rem;
+            right: 1rem;
+            background: var(--white);
+            padding: 0.5rem 1rem;
+            border-radius: 30px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            z-index: 1003;
+            font-size: 0.875rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .sync-status:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 16px rgba(0,0,0,0.15);
+        }
+
+        .sync-status.online {
+            border-left: 4px solid var(--success);
+        }
+
+        .sync-status.offline {
+            border-left: 4px solid var(--danger);
+        }
+
+        .sync-status.syncing {
+            border-left: 4px solid var(--accent);
+        }
+
+        .sync-status i {
+            color: var(--accent);
+        }
+
+        .user-menu {
+            position: fixed;
+            top: 1rem;
+            right: 12rem;
+            background: var(--white);
+            padding: 0.5rem 1rem;
+            border-radius: 30px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            z-index: 1003;
+            cursor: pointer;
+        }
+
+        .user-menu i {
+            color: var(--accent);
+        }
+
+        .user-dropdown {
+            position: absolute;
+            top: 100%;
+            right: 0;
+            background: var(--white);
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            padding: 0.5rem;
+            min-width: 200px;
+            display: none;
+            margin-top: 0.5rem;
+        }
+
+        .user-menu:hover .user-dropdown {
+            display: block;
+        }
+
+        .user-dropdown-item {
+            padding: 0.75rem 1rem;
+            cursor: pointer;
+            border-radius: 8px;
+            transition: all 0.2s ease;
+        }
+
+        .user-dropdown-item:hover {
+            background: var(--accent-soft);
+            color: var(--accent);
+        }
+
+        .user-dropdown-item i {
+            width: 20px;
+            margin-right: 0.5rem;
+        }
+
+        .theme-toggle {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            margin-left: 1rem;
+            background: var(--white);
+            padding: 0.5rem;
+            border-radius: 30px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+            border: 1px solid rgba(0,0,0,0.05);
+        }
+
+        .theme-toggle-btn {
+            padding: 0.5rem 1rem;
+            border-radius: 30px;
+            border: none;
+            font-weight: 600;
+            font-size: 0.875rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            background: transparent;
+            color: var(--gray);
+        }
+
+        .theme-toggle-btn.active {
+            background: var(--accent);
+            color: white;
+        }
+
+        .theme-toggle-btn i {
+            margin-right: 0.25rem;
+        }
+
+        .mobile-menu-btn {
+            display: none;
+            position: fixed;
+            top: 1rem;
+            left: 1rem;
+            z-index: 1002;
+            background: var(--accent);
+            color: var(--white);
+            padding: 0.75rem 1rem;
+            border-radius: 10px;
+            border: none;
+            font-size: 1.25rem;
+            cursor: pointer;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+
+        @media (max-width: 768px) {
+            .mobile-menu-btn {
+                display: block;
+            }
+            .sync-status, .user-menu {
+                top: 4rem;
+            }
+            .user-menu {
+                right: 1rem;
+            }
+            .sync-status {
+                left: 1rem;
+                right: auto;
+            }
+        }
+
+        .sidebar {
+            width: var(--sidebar-width);
+            background: linear-gradient(180deg, #ffffff 0%, #f8f9fa 100%);
+            color: var(--dark);
+            padding: 2rem 1.5rem;
+            display: flex;
+            flex-direction: column;
+            position: fixed;
+            height: 100vh;
+            overflow-y: auto;
+            transition: all 0.3s ease;
+            z-index: 1001;
+            box-shadow: 2px 0 10px rgba(0,0,0,0.05);
+        }
+
+        .sidebar-header {
+            margin-bottom: 2rem;
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            font-size: 1.5rem;
+            font-weight: 700;
+            margin-bottom: 1.5rem;
+            color: var(--sheep-black);
+        }
+
+        .logo span {
+            font-size: 2rem;
+        }
+
+        .restaurant-badge {
+            background: var(--accent-soft);
+            padding: 0.5rem 1rem;
+            border-radius: 50px;
+            font-size: 0.875rem;
+            color: var(--accent);
+            border: 1px solid rgba(230,126,34,0.3);
+            font-weight: 600;
+        }
+
+        .nav-links {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+            flex: 1;
+        }
+
+        .nav-item {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            padding: 0.875rem 1rem;
+            border-radius: 12px;
+            color: var(--dark);
+            text-decoration: none;
+            transition: all 0.3s ease;
+            cursor: pointer;
+            font-weight: 500;
+        }
+
+        .nav-item:hover, .nav-item.active {
+            background: var(--accent-soft);
+            color: var(--accent);
+        }
+
+        .nav-item i {
+            width: 24px;
+            text-align: center;
+            color: var(--accent);
+        }
+
+        .favorites-section {
+            margin-top: 2rem;
+            padding-top: 1.5rem;
+            border-top: 1px solid rgba(0,0,0,0.05);
+        }
+
+        .favorites-title {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-size: 0.875rem;
+            color: var(--gray);
+            margin-bottom: 1rem;
+        }
+
+        .main-content {
+            flex: 1;
+            margin-left: var(--sidebar-width);
+            padding: 2rem;
+            background: linear-gradient(135deg, #f5f7fa 0%, #e9ecef 100%);
+            min-height: 100vh;
+        }
+
+        .content-wrapper {
+            max-width: 1600px;
+            margin: 0 auto;
+            position: relative;
+        }
+
+        .top-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 2rem;
+            flex-wrap: wrap;
+            gap: 1rem;
+        }
+
+        .page-title {
+            color: var(--dark);
+            font-size: 2rem;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .search-container {
+            display: flex;
+            align-items: center;
+            background: var(--white);
+            border-radius: 50px;
+            padding: 0.5rem 1rem;
+            width: 400px;
+            max-width: 100%;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.02);
+            border: 1px solid rgba(0,0,0,0.05);
+            position: relative;
+        }
+
+        .search-container i {
+            color: var(--gray);
+            margin-right: 0.5rem;
+        }
+
+        .search-container input {
+            border: none;
+            outline: none;
+            width: 100%;
+            font-size: 0.95rem;
+            background: transparent;
+        }
+
+        .search-results {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            background: var(--white);
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+            max-height: 400px;
+            overflow-y: auto;
+            z-index: 1000;
+            display: none;
+            margin-top: 0.5rem;
+        }
+
+        .search-result-item {
+            padding: 1rem;
+            border-bottom: 1px solid rgba(0,0,0,0.05);
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .search-result-item:hover {
+            background: var(--accent-soft);
+        }
+
+        .search-result-category {
+            font-size: 0.7rem;
+            color: var(--accent);
+            text-transform: uppercase;
+            font-weight: 600;
+        }
+
+        .back-button {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.5rem 1rem;
+            background: var(--white);
+            border: 1px solid rgba(0,0,0,0.05);
+            border-radius: 10px;
+            cursor: pointer;
+            font-weight: 500;
+            transition: all 0.3s ease;
+        }
+
+        .back-button:hover {
+            background: var(--light);
+            transform: translateX(-4px);
+        }
+
+        .alphabet-nav-container {
+            display: flex;
+            gap: 2rem;
+            position: relative;
+        }
+
+        .alphabet-content {
+            flex: 1;
+        }
+
+        .alphabet-nav {
+            position: sticky;
+            top: 2rem;
+            right: 0;
+            float: right;
+            display: flex;
+            flex-direction: column;
+            gap: 0.25rem;
+            background: var(--white);
+            padding: 1rem 0.5rem;
+            border-radius: 30px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+            margin-left: 1rem;
+            z-index: 10;
+        }
+
+        .alphabet-letter {
+            width: 30px;
+            height: 30px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 50%;
+            font-size: 0.75rem;
+            font-weight: 600;
+            color: var(--gray);
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .alphabet-letter:hover {
+            background: var(--accent-soft);
+            color: var(--accent);
+        }
+
+        .alphabet-letter.active {
+            background: var(--accent);
+            color: white;
+        }
+
+        .alphabet-letter.disabled {
+            opacity: 0.3;
+            cursor: default;
+        }
+
+        .alphabet-letter.disabled:hover {
+            background: none;
+            color: var(--gray);
+        }
+
+        .quick-search {
+            display: flex;
+            align-items: center;
+            background: var(--white);
+            border-radius: 30px;
+            padding: 0.5rem 1rem;
+            border: 1px solid rgba(0,0,0,0.05);
+            margin-bottom: 1.5rem;
+        }
+
+        .quick-search i {
+            color: var(--gray);
+            margin-right: 0.5rem;
+        }
+
+        .quick-search input {
+            border: none;
+            outline: none;
+            width: 100%;
+            font-size: 0.9rem;
+            background: transparent;
+        }
+
+        .spirit-library-container {
+            background: var(--white);
+            border-radius: 24px;
+            padding: 2rem;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.02);
+        }
+
+        .import-section {
+            background: var(--accent-soft);
+            border-radius: 16px;
+            padding: 1.5rem;
+            margin-bottom: 2rem;
+            border: 1px dashed var(--accent);
+            text-align: center;
+        }
+
+        .import-area {
+            border: 2px dashed var(--gray);
+            border-radius: 12px;
+            padding: 2rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .import-area:hover {
+            border-color: var(--accent);
+            background: var(--accent-soft);
+        }
+
+        .spirit-filters {
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+            flex-wrap: wrap;
+        }
+
+        .filter-group {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            background: var(--light);
+            padding: 0.5rem 1rem;
+            border-radius: 30px;
+            flex: 1;
+            min-width: 250px;
+        }
+
+        .filter-group i {
+            color: var(--accent);
+        }
+
+        .filter-input {
+            border: none;
+            background: transparent;
+            padding: 0.5rem;
+            outline: none;
+            width: 100%;
+        }
+
+        .spirit-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .spirit-table th {
+            background: var(--light);
+            padding: 1rem;
+            text-align: left;
+            font-weight: 600;
+            color: var(--primary);
+        }
+
+        .spirit-table td {
+            padding: 1rem;
+            border-bottom: 1px solid rgba(0,0,0,0.05);
+        }
+
+        .spirit-table tr:hover {
+            background: var(--accent-soft);
+        }
+
+        .spirit-actions {
+            display: flex;
+            gap: 0.5rem;
+        }
+
+        .spirit-edit-btn {
+            background: var(--primary);
+            color: white;
+            border: none;
+            padding: 0.25rem 0.75rem;
+            border-radius: 4px;
+            font-size: 0.7rem;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .spirit-edit-btn:hover {
+            background: var(--secondary);
+        }
+
+        .spirit-delete-btn {
+            background: var(--danger);
+            color: white;
+            border: none;
+            padding: 0.25rem 0.75rem;
+            border-radius: 4px;
+            font-size: 0.7rem;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .spirit-delete-btn:hover {
+            background: #c0392b;
+        }
+
+        .abv-spirit {
+            color: var(--success);
+            font-weight: 600;
+        }
+
+        .abv-liqueur {
+            color: #e67e22;
+            font-weight: 600;
+        }
+
+        .abv-bitters {
+            color: #9b59b6;
+            font-weight: 600;
+        }
+
+        .abv-wine {
+            color: #3498db;
+            font-weight: 600;
+        }
+
+        .abv-non {
+            color: var(--gray);
+            font-weight: 400;
+        }
+
+        .spirit-edit-modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.5);
+            z-index: 2000;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .spirit-edit-content {
+            background: var(--white);
+            border-radius: 24px;
+            padding: 2rem;
+            max-width: 600px;
+            width: 95%;
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+
+        .ingredient-search {
+            position: relative;
+        }
+
+        .autocomplete-list {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            background: var(--white);
+            border: 1px solid rgba(0,0,0,0.1);
+            border-radius: 8px;
+            max-height: 200px;
+            overflow-y: auto;
+            z-index: 100;
+            display: none;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+
+        .autocomplete-item {
+            padding: 0.75rem 1rem;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .autocomplete-item:hover {
+            background: var(--accent-soft);
+        }
+
+        .venue-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+
+        .venue-card {
+            background: var(--white);
+            border-radius: 20px;
+            padding: 1.5rem;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.02);
+            border: 1px solid rgba(0,0,0,0.05);
+            transition: all 0.3s ease;
+            display: flex;
+            flex-direction: column;
+            position: relative;
+        }
+
+        .venue-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 12px 20px var(--accent-soft);
+            border-color: var(--accent);
+        }
+
+        .venue-drag-handle {
+            position: absolute;
+            top: 1rem;
+            left: 1rem;
+            cursor: move;
+            color: var(--gray);
+        }
+
+        .venue-image {
+            width: 100%;
+            height: 160px;
+            border-radius: 12px;
+            overflow: hidden;
+            margin-bottom: 1rem;
+            position: relative;
+        }
+
+        .venue-image img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .venue-image-upload {
+            position: absolute;
+            bottom: 10px;
+            right: 10px;
+            background: rgba(0,0,0,0.5);
+            color: white;
+            padding: 0.5rem;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 0.75rem;
+        }
+
+        .venue-info {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+
+        .venue-name-large {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--dark);
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .venue-location {
+            color: var(--gray);
+            font-size: 0.875rem;
+            display: flex;
+            align-items: center;
+            gap: 0.25rem;
+        }
+
+        .venue-stats {
+            display: flex;
+            gap: 1rem;
+            margin-top: 0.5rem;
+        }
+
+        .venue-stat {
+            padding: 0.5rem 1rem;
+            background: var(--light);
+            border-radius: 50px;
+            font-size: 0.875rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .venue-stat:hover {
+            background: var(--accent-soft);
+            color: var(--accent);
+        }
+
+        .venue-actions {
+            display: flex;
+            gap: 0.5rem;
+            margin-top: 1rem;
+            width: 100%;
+        }
+
+        .venue-action-btn {
+            flex: 1;
+            padding: 0.5rem;
+            border: none;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 0.75rem;
+        }
+
+        .venue-edit-btn {
+            background: var(--primary);
+            color: white;
+        }
+
+        .venue-edit-btn:hover {
+            background: var(--secondary);
+        }
+
+        .venue-delete-btn {
+            background: var(--danger);
+            color: white;
+        }
+
+        .venue-delete-btn:hover {
+            background: #c0392b;
+        }
+
+        .venue-overview-btn {
+            background: var(--accent);
+            color: white;
+        }
+
+        .venue-overview-btn:hover {
+            background: var(--accent-light);
+        }
+
+        .item-list {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+            margin-top: 1.5rem;
+        }
+
+        .item-card, .classic-card {
+            background: var(--white);
+            border-radius: 16px;
+            padding: 1.25rem;
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            border: 1px solid rgba(0,0,0,0.05);
+            position: relative;
+        }
+
+        .item-card:hover, .classic-card:hover {
+            background: var(--accent-soft);
+            transform: translateX(4px);
+            border-color: var(--accent);
+        }
+
+        .item-thumbnail, .classic-image {
+            width: 60px;
+            height: 60px;
+            border-radius: 12px;
+            background: var(--light);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+            position: relative;
+            flex-shrink: 0;
+        }
+
+        .item-thumbnail img, .classic-image img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .item-info, .classic-info {
+            flex: 1;
+        }
+
+        .item-name, .classic-name {
+            font-weight: 700;
+            color: var(--primary);
+            font-size: 1.1rem;
+            margin-bottom: 0.25rem;
+            display: flex;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+        }
+
+        .item-meta, .classic-meta {
+            display: flex;
+            gap: 1rem;
+            font-size: 0.75rem;
+            color: var(--gray);
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        .item-badge, .classic-price-badge {
+            background: var(--accent-soft);
+            padding: 0.25rem 0.75rem;
+            border-radius: 20px;
+            font-size: 0.7rem;
+            font-weight: 600;
+            color: var(--accent);
+        }
+
+        .family-tag {
+            background: var(--accent-soft);
+            padding: 0.15rem 0.5rem;
+            border-radius: 20px;
+            font-size: 0.65rem;
+            font-weight: 600;
+            color: var(--accent);
+            display: inline-block;
+        }
+
+        .action-btn, .classic-action-btn {
+            background: none;
+            border: 1px solid var(--primary);
+            padding: 0.25rem 0.75rem;
+            border-radius: 20px;
+            font-size: 0.7rem;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            color: var(--primary);
+            margin-left: 0.5rem;
+        }
+
+        .action-btn:hover, .classic-action-btn:hover {
+            background: var(--primary);
+            color: white;
+        }
+
+        .share-btn, .classic-share-btn {
+            border-color: var(--accent);
+            color: var(--accent);
+        }
+
+        .share-btn:hover, .classic-share-btn:hover {
+            background: var(--accent);
+            border-color: var(--accent);
+            color: white;
+        }
+
+        .favorite-star {
+            color: var(--accent);
+            margin-left: 0.25rem;
+        }
+
+        .overview-container {
+            background: var(--white);
+            border-radius: 24px;
+            padding: 2rem;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.02);
+            margin-top: 1.5rem;
+        }
+
+        .overview-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 2rem;
+            padding-bottom: 1rem;
+            border-bottom: 2px solid var(--accent);
+        }
+
+        .overview-title {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--primary);
+        }
+
+        .overview-actions {
+            display: flex;
+            gap: 1rem;
+            align-items: center;
+        }
+
+        .selection-actions {
+            display: flex;
+            gap: 0.5rem;
+            margin-right: 1rem;
+        }
+
+        .select-checkbox {
+            width: 18px;
+            height: 18px;
+            cursor: pointer;
+            accent-color: var(--accent);
+        }
+
+        .overview-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 1.5rem;
+        }
+
+        .overview-table th {
+            background: var(--light);
+            padding: 1rem;
+            text-align: left;
+            font-weight: 600;
+            color: var(--primary);
+            font-size: 0.875rem;
+        }
+
+        .overview-table td {
+            padding: 1rem;
+            border-bottom: 1px solid rgba(0,0,0,0.05);
+            font-size: 0.875rem;
+        }
+
+        .overview-table tr {
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .overview-table tr:hover {
+            background: var(--accent-soft);
+        }
+
+        .overview-table tr.selected {
+            background: rgba(230,126,34,0.15);
+            border-left: 3px solid var(--accent);
+        }
+
+        .cogs-good {
+            color: var(--success);
+            font-weight: 600;
+        }
+
+        .cogs-warning {
+            color: #F39C12;
+            font-weight: 600;
+        }
+
+        .cogs-high {
+            color: var(--danger);
+            font-weight: 600;
+        }
+
+        .editable-price {
+            cursor: pointer;
+            padding: 0.25rem 0.5rem;
+            border-radius: 4px;
+            transition: background-color 0.2s;
+        }
+
+        .editable-price:hover {
+            background-color: var(--accent-soft);
+        }
+
+        .price-input {
+            width: 80px;
+            padding: 0.25rem;
+            border: 1px solid var(--accent);
+            border-radius: 4px;
+            font-size: 0.875rem;
+        }
+
+        .pdf-preview-modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.8);
+            z-index: 3000;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .pdf-preview-content {
+            background: var(--white);
+            border-radius: 24px;
+            padding: 2rem;
+            max-width: 900px;
+            width: 95%;
+            max-height: 90vh;
+            overflow-y: auto;
+            position: relative;
+        }
+
+        .pdf-preview-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1.5rem;
+            padding-bottom: 1rem;
+            border-bottom: 2px solid var(--accent);
+        }
+
+        .pdf-preview-title {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--primary);
+        }
+
+        .pdf-preview-close {
+            background: none;
+            border: none;
+            font-size: 1.5rem;
+            cursor: pointer;
+            color: var(--gray);
+        }
+
+        .pdf-preview-close:hover {
+            color: var(--danger);
+        }
+
+        .pdf-preview-options {
+            display: flex;
+            gap: 1rem;
+            margin-top: 2rem;
+            justify-content: flex-end;
+        }
+
+        .pdf-preview-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 1rem;
+        }
+
+        .pdf-preview-table th {
+            background: var(--light);
+            padding: 0.75rem;
+            text-align: left;
+            font-size: 0.75rem;
+            font-weight: 600;
+            color: var(--primary);
+        }
+
+        .pdf-preview-table td {
+            padding: 0.75rem;
+            border-bottom: 1px solid rgba(0,0,0,0.05);
+            font-size: 0.75rem;
+        }
+
+        .pdf-spec-card {
+            display: flex;
+            gap: 2rem;
+            background: var(--white);
+            border-radius: 12px;
+            padding: 1.5rem;
+            margin-bottom: 1.5rem;
+            border: 1px solid rgba(0,0,0,0.05);
+            position: relative;
+            min-height: 200px;
+        }
+
+        .pdf-spec-content {
+            flex: 1;
+        }
+
+        .pdf-spec-image {
+            width: 120px;
+            height: 120px;
+            border-radius: 12px;
+            overflow: hidden;
+            background: var(--light);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+
+        .pdf-spec-image img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .pdf-spec-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+            padding-bottom: 0.5rem;
+            border-bottom: 1px solid var(--accent);
+        }
+
+        .pdf-spec-name {
+            font-size: 1.25rem;
+            font-weight: 700;
+            color: var(--primary);
+        }
+
+        .pdf-spec-family {
+            color: var(--accent);
+            font-size: 0.875rem;
+        }
+
+        .cocktail-detail-page {
+            background: var(--white);
+            border-radius: 24px;
+            padding: 2rem;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.02);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .cocktail-silhouette {
+            position: absolute;
+            top: 0;
+            right: 0;
+            width: 300px;
+            height: 100%;
+            opacity: 0.1;
+            pointer-events: none;
+            z-index: 1;
+        }
+
+        .cocktail-silhouette img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            object-position: left;
+        }
+
+        .detail-content {
+            position: relative;
+            z-index: 2;
+        }
+
+        .detail-header {
+            display: flex;
+            gap: 2rem;
+            margin-bottom: 2rem;
+            flex-wrap: wrap;
+        }
+
+        .detail-image {
+            width: 120px;
+            height: 120px;
+            border-radius: 16px;
+            background: var(--light);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+            border: 1px solid rgba(0,0,0,0.05);
+            position: relative;
+        }
+
+        .detail-image img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .image-upload-btn {
+            position: absolute;
+            bottom: 10px;
+            right: 10px;
+            z-index: 3;
+        }
+
+        .detail-title {
+            flex: 1;
+        }
+
+        .detail-name {
+            font-size: 2rem;
+            font-weight: 700;
+            color: var(--dark);
+            margin-bottom: 0.5rem;
+        }
+
+        .detail-venue {
+            color: var(--accent);
+            font-size: 1.1rem;
+            margin-bottom: 0.5rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .info-row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 1.5rem;
+            align-items: center;
+            padding: 1rem 0;
+            border-top: 1px solid rgba(0,0,0,0.05);
+            border-bottom: 1px solid rgba(0,0,0,0.05);
+            margin: 1rem 0;
+        }
+
+        .info-item {
+            display: flex;
+            flex-direction: column;
+            gap: 0.25rem;
+        }
+
+        .info-item-label {
+            font-size: 0.7rem;
+            color: var(--gray);
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+
+        .info-item-value {
+            font-size: 0.95rem;
+            color: var(--dark);
+            font-weight: 500;
+        }
+
+        .selling-price {
+            background: var(--accent);
+            color: white !important;
+            padding: 0.5rem 1rem;
+            border-radius: 30px;
+            font-weight: 700;
+        }
+
+        .recipe-section {
+            background: linear-gradient(135deg, #f8f9fa 0%, #ffffff 100%);
+            border-radius: 20px;
+            padding: 1.5rem;
+            margin-bottom: 1.5rem;
+            border: 2px solid var(--accent);
+        }
+
+        .section-title {
+            font-size: 1.25rem;
+            font-weight: 700;
+            color: var(--primary);
+            margin-bottom: 1.5rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .recipe-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 1.5rem;
+        }
+
+        .recipe-table th {
+            background: var(--light);
+            padding: 1rem;
+            text-align: left;
+            font-weight: 600;
+            color: var(--primary);
+        }
+
+        .recipe-table td {
+            padding: 1rem;
+            border-bottom: 1px solid rgba(0,0,0,0.05);
+        }
+
+        .omit-checkbox {
+            width: 20px;
+            height: 20px;
+            cursor: pointer;
+            accent-color: var(--accent);
+        }
+
+        .scale-section {
+            background: var(--white);
+            border-radius: 20px;
+            padding: 1.5rem;
+            margin-top: 1.5rem;
+            border: 1px solid rgba(0,0,0,0.05);
+        }
+
+        .scale-title {
+            font-size: 1.25rem;
+            font-weight: 700;
+            color: var(--primary);
+            margin-bottom: 1.5rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .scale-step {
+            background: var(--light);
+            border-radius: 16px;
+            padding: 1.25rem;
+            margin-bottom: 1.25rem;
+        }
+
+        .step-header {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            margin-bottom: 1rem;
+        }
+
+        .step-number {
+            width: 28px;
+            height: 28px;
+            background: var(--accent);
+            color: white;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            font-size: 0.875rem;
+        }
+
+        .step-title {
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: var(--primary);
+        }
+
+        .scale-options {
+            display: flex;
+            gap: 1.5rem;
+            flex-wrap: wrap;
+        }
+
+        .scale-option {
+            flex: 1;
+            min-width: 200px;
+            background: var(--white);
+            padding: 1rem;
+            border-radius: 12px;
+            border: 1px solid rgba(0,0,0,0.05);
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .scale-option:hover {
+            border-color: var(--accent);
+            background: var(--accent-soft);
+        }
+
+        .scale-option.active {
+            border-color: var(--accent);
+            background: var(--accent-soft);
+        }
+
+        .scale-option-title {
+            font-weight: 600;
+            color: var(--primary);
+            margin-bottom: 0.5rem;
+        }
+
+        .scale-option-desc {
+            font-size: 0.75rem;
+            color: var(--gray);
+        }
+
+        .quantity-input-group {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            margin-top: 0.5rem;
+        }
+
+        .quantity-input {
+            width: 120px;
+            padding: 0.75rem;
+            border: 1px solid rgba(0,0,0,0.1);
+            border-radius: 10px;
+            font-size: 1rem;
+        }
+
+        .quantity-label {
+            font-size: 0.875rem;
+            color: var(--gray);
+        }
+
+        .dilution-options {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            margin-top: 0.5rem;
+        }
+
+        .dilution-card {
+            background: var(--white);
+            padding: 1rem;
+            border-radius: 12px;
+            border: 1px solid rgba(0,0,0,0.05);
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .dilution-card:hover {
+            border-color: var(--accent);
+        }
+
+        .dilution-card.active {
+            border-color: var(--accent);
+            background: var(--accent-soft);
+        }
+
+        .dilution-percentage {
+            font-size: 1.25rem;
+            font-weight: 700;
+            color: var(--accent);
+            margin-bottom: 0.25rem;
+        }
+
+        .dilution-desc {
+            font-size: 0.75rem;
+            color: var(--gray);
+        }
+
+        .custom-dilution-group {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            margin-top: 1rem;
+        }
+
+        .calculate-btn {
+            background: var(--accent);
+            color: white;
+            padding: 1rem 2rem;
+            border: none;
+            border-radius: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            width: 100%;
+            font-size: 1rem;
+            margin-top: 1.5rem;
+        }
+
+        .calculate-btn:hover {
+            background: var(--accent-light);
+            transform: scale(1.01);
+        }
+
+        .scaled-results {
+            margin-top: 2rem;
+            padding-top: 1.5rem;
+            border-top: 2px solid var(--accent);
+        }
+
+        .water-note {
+            background: rgba(52, 152, 219, 0.1);
+            padding: 0.5rem 1rem;
+            border-radius: 8px;
+            margin-top: 0.5rem;
+            font-size: 0.875rem;
+            color: #2980b9;
+        }
+
+        .serving-note {
+            background: rgba(39, 174, 96, 0.1);
+            padding: 0.5rem 1rem;
+            border-radius: 8px;
+            margin-top: 0.5rem;
+            font-size: 0.875rem;
+            color: var(--success);
+            font-weight: 600;
+        }
+
+        .method-section {
+            background: rgba(44,62,80,0.02);
+            border-radius: 16px;
+            padding: 1.5rem;
+            margin: 1.5rem 0;
+        }
+
+        .notes-section {
+            background: var(--accent-soft);
+            border-radius: 16px;
+            padding: 1.5rem;
+            margin: 1.5rem 0;
+        }
+
+        .btn {
+            padding: 0.75rem 1.5rem;
+            border-radius: 10px;
+            border: none;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 0.875rem;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .btn-primary {
+            background: var(--accent);
+            color: var(--white);
+        }
+
+        .btn-primary:hover {
+            background: var(--accent-light);
+            transform: scale(1.02);
+        }
+
+        .btn-pdf {
+            background: #E74C3C;
+            color: var(--white);
+        }
+
+        .btn-pdf:hover {
+            background: #c0392b;
+        }
+
+        .btn-outline {
+            background: transparent;
+            border: 1px solid var(--accent);
+            color: var(--accent);
+        }
+
+        .btn-outline:hover {
+            background: var(--accent-soft);
+        }
+
+        .btn-sm {
+            padding: 0.5rem 1rem;
+            font-size: 0.75rem;
+        }
+
+        .btn-success {
+            background: var(--success);
+            color: white;
+        }
+
+        .btn-success:hover {
+            background: #219a52;
+        }
+
+        .wide-textarea {
+            width: 100%;
+            padding: 1rem;
+            border: 1px solid rgba(0,0,0,0.1);
+            border-radius: 10px;
+            font-size: 0.95rem;
+            resize: vertical;
+            min-height: 120px;
+            font-family: 'Inter', sans-serif;
+        }
+
+        .wide-textarea:focus {
+            outline: none;
+            border-color: var(--accent);
+        }
+
+        .family-datalist {
+            width: 100%;
+            padding: 0.75rem;
+            border: 1px solid rgba(0,0,0,0.1);
+            border-radius: 10px;
+        }
+
+        .family-datalist:focus {
+            outline: none;
+            border-color: var(--accent);
+        }
+
+        .form-input {
+            width: 100%;
+            padding: 0.75rem;
+            border: 1px solid rgba(0,0,0,0.1);
+            border-radius: 10px;
+            font-size: 0.95rem;
+        }
+
+        .form-input:focus {
+            outline: none;
+            border-color: var(--accent);
+        }
+
+        .form-input[readonly] {
+            background: var(--light);
+        }
+
+        .toast {
+            position: fixed;
+            bottom: 2rem;
+            right: 2rem;
+            background: var(--dark);
+            color: var(--white);
+            padding: 1rem 2rem;
+            border-radius: 12px;
+            animation: slideIn 0.3s ease;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            z-index: 2000;
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        @keyframes slideIn {
+            from {
+                transform: translateX(100%);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .sidebar {
+                transform: translateX(-100%);
+                position: fixed;
+                z-index: 1001;
+            }
+
+            .sidebar.active {
+                transform: translateX(0);
+            }
+
+            .main-content {
+                margin-left: 0;
+                padding: 1rem;
+                padding-top: 5rem;
+            }
+
+            .cocktail-silhouette {
+                width: 150px;
+            }
+
+            .scale-options {
+                flex-direction: column;
+            }
+
+            .alphabet-nav-container {
+                flex-direction: column;
+            }
+
+            .alphabet-nav {
+                position: fixed;
+                bottom: 1rem;
+                right: 1rem;
+                flex-direction: row;
+                flex-wrap: wrap;
+                max-width: 300px;
+                background: var(--white);
+                padding: 0.75rem;
+                border-radius: 30px;
+                box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            }
+
+            .spirit-filters {
+                flex-direction: column;
+            }
+
+            .filter-input {
+                width: 100%;
+            }
+
+            .theme-toggle {
+                margin-left: 0;
+                margin-top: 1rem;
+                width: 100%;
+                justify-content: center;
+            }
+
+            .overview-actions {
+                flex-direction: column;
+                width: 100%;
+            }
+
+            .overview-table {
+                display: block;
+                overflow-x: auto;
+            }
+
+            .pdf-spec-card {
+                flex-direction: column;
+            }
+
+            .pdf-spec-image {
+                width: 100%;
+                height: 200px;
+            }
+        }
+    </style>
+</head>
+<body class="theme-orange" id="appBody">
+    <!-- Auth Modal -->
+    <div id="authModal" class="auth-modal">
+        <div class="auth-content">
+            <div class="auth-logo">🐑</div>
+            <h2 style="color: var(--primary); margin-bottom: 0.5rem;">Black Sheep Restaurants</h2>
+            <p style="color: var(--gray); margin-bottom: 2rem;">Sign in to access your beverage database across all devices</p>
+            
+            <div class="auth-tabs">
+                <button class="auth-tab active" onclick="switchAuthTab('login')">Login</button>
+                <button class="auth-tab" onclick="switchAuthTab('signup')">Sign Up</button>
+            </div>
+
+            <div id="loginForm" class="auth-form active">
+                <input type="email" id="loginEmail" class="auth-input" placeholder="Email" required>
+                <input type="password" id="loginPassword" class="auth-input" placeholder="Password" required>
+                <div id="loginError" class="auth-error"></div>
+                <button class="auth-btn" onclick="handleLogin()">
+                    <i class="fas fa-sign-in-alt"></i> Login
+                </button>
+            </div>
+
+            <div id="signupForm" class="auth-form">
+                <input type="email" id="signupEmail" class="auth-input" placeholder="Email" required>
+                <input type="password" id="signupPassword" class="auth-input" placeholder="Password (min. 6 characters)" required>
+                <div id="signupError" class="auth-error"></div>
+                <button class="auth-btn" onclick="handleSignUp()">
+                    <i class="fas fa-user-plus"></i> Create Account
+                </button>
+            </div>
+
+            <div style="margin-top: 1rem; font-size: 0.75rem; color: var(--gray);">
+                <i class="fas fa-cloud"></i> Your data syncs automatically across all devices
+            </div>
+        </div>
+    </div>
+
+    <!-- Mobile Menu Button -->
+    <button class="mobile-menu-btn" id="mobileMenuBtn">
+        <i class="fas fa-bars"></i>
+    </button>
+
+    <!-- Sync Status Indicator -->
+    <div id="syncStatus" class="sync-status offline" onclick="showSyncDetails()">
+        <i class="fas fa-cloud"></i>
+        <span id="syncStatusText">Offline</span>
+    </div>
+
+    <!-- User Menu -->
+    <div id="userMenu" class="user-menu" style="display: none;">
+        <i class="fas fa-user-circle"></i>
+        <span id="userEmail">user@example.com</span>
+        <i class="fas fa-chevron-down"></i>
+        <div class="user-dropdown">
+            <div class="user-dropdown-item" onclick="manualSync()">
+                <i class="fas fa-sync"></i> Sync Now
+            </div>
+            <div class="user-dropdown-item" onclick="exportAllData()">
+                <i class="fas fa-download"></i> Export Backup
+            </div>
+            <div class="user-dropdown-item" onclick="importBackup()">
+                <i class="fas fa-upload"></i> Import Backup
+            </div>
+            <div style="border-top: 1px solid var(--light); margin: 0.5rem 0;"></div>
+            <div class="user-dropdown-item" onclick="handleLogout()">
+                <i class="fas fa-sign-out-alt"></i> Logout
+            </div>
+        </div>
+    </div>
+
+    <div class="app-container">
+        <!-- Sidebar -->
+        <aside class="sidebar" id="sidebar">
+            <div class="sidebar-header">
+                <div class="logo">
+                    <span>🐑</span>
+                    <span>BLACK SHEEP</span>
+                </div>
+                <div class="restaurant-badge">
+                    <i class="fas fa-star"></i> Black Sheep Restaurants
+                </div>
+            </div>
+
+            <nav class="nav-links">
+                <div class="nav-item" data-page="dashboard">
+                    <i class="fas fa-home"></i>
+                    <span>Dashboard</span>
+                </div>
+                <div class="nav-item" data-page="drinks">
+                    <i class="fas fa-cocktail"></i>
+                    <span>Drinks Library</span>
+                </div>
+                <div class="nav-item" data-page="classic">
+                    <i class="fas fa-book"></i>
+                    <span>Classic Cocktails</span>
+                </div>
+                <div class="nav-item" data-page="spirit-library">
+                    <i class="fas fa-wine-bottle"></i>
+                    <span>Spirit Library</span>
+                </div>
+                <div class="nav-item" data-page="infusion">
+                    <i class="fas fa-flask"></i>
+                    <span>Infusion</span>
+                </div>
+                <div class="nav-item" data-page="distillation">
+                    <i class="fas fa-wine-bottle"></i>
+                    <span>Distillation</span>
+                </div>
+            </nav>
+
+            <div class="favorites-section">
+                <div class="favorites-title">
+                    <i class="fas fa-star"></i>
+                    <span>Favorite Cocktails</span>
+                </div>
+                <div id="favoritesList" class="favorites-list"></div>
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <div class="content-wrapper" id="mainContent"></div>
+        </main>
+    </div>
+
+    <!-- All modals (identical to original) -->
+    <div id="spiritEditModal" class="spirit-edit-modal"><div class="spirit-edit-content"><div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; padding-bottom: 1rem; border-bottom: 2px solid var(--accent);"><h2 style="font-size: 1.5rem; font-weight: 700; color: var(--primary);"><i class="fas fa-edit"></i> Edit Spirit</h2><button onclick="closeSpiritEditModal()" style="background: none; border: none; font-size: 1.5rem; cursor: pointer; color: var(--gray);"><i class="fas fa-times"></i></button></div><form id="editSpiritForm" onsubmit="saveSpiritChanges(event)"><input type="hidden" id="editSpiritId"><div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 1.5rem; margin-bottom: 1.5rem;"><div class="form-group"><label style="font-weight: 600; color: var(--primary);">Category</label><input type="text" id="editSpiritType" class="form-input" required></div><div class="form-group"><label style="font-weight: 600; color: var(--primary);">Product</label><input type="text" id="editSpiritName" class="form-input" required></div><div class="form-group"><label style="font-weight: 600; color: var(--primary);">Size (ml)</label><input type="number" id="editSpiritBottleSize" class="form-input" step="0.1" min="0" required></div><div class="form-group"><label style="font-weight: 600; color: var(--primary);">Cost ($)</label><input type="number" id="editSpiritBottleCost" class="form-input" step="0.01" min="0" required></div><div class="form-group"><label style="font-weight: 600; color: var(--primary);">ABV (%)</label><input type="number" id="editSpiritABV" class="form-input" step="0.1" min="0" max="100" required></div><div class="form-group"><label style="font-weight: 600; color: var(--primary);">Supplier</label><input type="text" id="editSpiritSupplier" class="form-input"></div></div><div style="display: flex; gap: 1rem; justify-content: flex-end;"><button type="button" class="btn btn-outline" onclick="closeSpiritEditModal()">Cancel</button><button type="submit" class="btn btn-primary">Save Changes</button></div></form></div></div>
+    <div id="pdfPreviewModal" class="pdf-preview-modal"><div class="pdf-preview-content"><div class="pdf-preview-header"><h2 class="pdf-preview-title" id="pdfPreviewTitle">PDF Preview</h2><button class="pdf-preview-close" onclick="closePDFPreview()"><i class="fas fa-times"></i></button></div><div id="pdfPreviewContent" style="max-height: 60vh; overflow-y: auto;"></div><div class="pdf-preview-options"><button class="btn btn-outline" onclick="closePDFPreview()">Cancel</button><button class="btn btn-pdf" id="pdfDownloadBtn" onclick="downloadPDFFromPreview()"><i class="fas fa-file-pdf"></i> Download PDF</button><button class="btn btn-share" id="pdfShareBtn" onclick="sharePDFFromPreview()"><i class="fas fa-share-alt"></i> Share</button></div></div></div>
+    <div id="editVenueModal" class="modal" style="display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 2000; align-items: center; justify-content: center;"><div class="modal-content" style="background: var(--white); border-radius: 24px; padding: 2rem; max-width: 500px; width: 95%;"><div class="modal-header"><h2 class="modal-title"><i class="fas fa-edit"></i> Edit Venue</h2><button class="modal-close" onclick="closeModal('editVenueModal')" style="background: none; border: none; font-size: 1.5rem; cursor: pointer; color: var(--gray);"><i class="fas fa-times"></i></button></div><form id="editVenueForm" onsubmit="saveVenueChanges(event)"><input type="hidden" id="editVenueId"><div class="form-group" style="margin-bottom: 1.5rem;"><label>Venue Name</label><input type="text" id="editVenueName" class="form-input" required></div><div class="form-group" style="margin-bottom: 1.5rem;"><label>Location</label><input type="text" id="editVenueLocation" class="form-input" required></div><div style="display: flex; gap: 1rem; justify-content: flex-end;"><button type="button" class="btn btn-outline" onclick="closeModal('editVenueModal')">Cancel</button><button type="submit" class="btn btn-primary">Save Changes</button></div></form></div></div>
+    <div id="addCocktailModal" class="modal" style="display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 2000; align-items: center; justify-content: center;"><div class="modal-content" style="background: var(--white); border-radius: 24px; padding: 2rem; max-width: 1000px; width: 95%; max-height: 90vh; overflow-y: auto;"><div class="modal-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; padding-bottom: 1rem; border-bottom: 2px solid var(--accent);"><h2 class="modal-title" style="font-size: 1.5rem; font-weight: 700; color: var(--primary);"><i class="fas fa-plus-circle"></i> Add New Cocktail</h2><button class="modal-close" onclick="closeModal('addCocktailModal')" style="background: none; border: none; font-size: 1.5rem; cursor: pointer; color: var(--gray);"><i class="fas fa-times"></i></button></div><form id="newCocktailForm" onsubmit="saveNewCocktail(event)"><div id="venueSelectionField" style="margin-bottom: 1.5rem;"><div class="form-group"><label style="font-weight: 600; color: var(--primary);">Venue</label><select id="cocktailVenue" class="form-input" required><option value="">Select Venue...</option></select></div></div><div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 1.5rem; margin-bottom: 1.5rem;"><div class="form-group"><label style="font-weight: 600; color: var(--primary);">Name</label><input type="text" id="cocktailName" class="form-input" placeholder="e.g., La Rochelle Martini" required></div><div class="form-group"><label style="font-weight: 600; color: var(--primary);">Cocktail Family</label><input list="cocktailFamilies" id="cocktailFamily" class="family-datalist" placeholder="Select or type family" required><datalist id="cocktailFamilies"><option value="Signature"><option value="Classic"><option value="Sour"><option value="Collins"><option value="Gimlet"><option value="Rickey"><option value="Sidecar"><option value="Smash"><option value="Manhattan"><option value="Martini"><option value="Old Fashioned"><option value="Tiki"><option value="NA"></datalist></div><div class="form-group"><label style="font-weight: 600; color: var(--primary);">Cost Price ($)</label><input type="number" id="cocktailCostPrice" class="form-input" step="0.01" min="0" readonly style="background: var(--light);" value="0.00"></div><div class="form-group"><label style="font-weight: 600; color: var(--primary);">Selling Price ($)</label><input type="number" id="cocktailSellingPrice" class="form-input" step="0.01" min="0" placeholder="88.00" required></div><div class="form-group"><label style="font-weight: 600; color: var(--primary);">Glassware</label><input type="text" id="cocktailGlass" class="form-input" placeholder="e.g., Coupe" required></div><div class="form-group"><label style="font-weight: 600; color: var(--primary);">Garnish</label><input type="text" id="cocktailGarnish" class="form-input" placeholder="e.g., Lemon Zest" required></div></div><h3 style="color: var(--primary); margin-bottom: 1rem; font-size: 1.1rem;"><i class="fas fa-flask"></i> Recipe Ingredients</h3><table class="ingredient-table" style="width: 100%; border-collapse: collapse; margin-bottom: 1rem;"><thead><tr style="background: var(--light);"><th style="padding: 0.75rem; text-align: left;">Ingredient</th><th style="padding: 0.75rem; text-align: left;">Bottle (ml)</th><th style="padding: 0.75rem; text-align: left;">Cost ($)</th><th style="padding: 0.75rem; text-align: left;">Pour</th><th style="padding: 0.75rem; text-align: left;">Unit</th><th style="padding: 0.75rem; text-align: left;">Pour Cost</th><th style="padding: 0.75rem; text-align: left;">ABV %</th><th style="padding: 0.75rem; text-align: left;"></th></tr></thead><tbody id="ingredientTableBody"></tbody></table><button type="button" class="btn btn-outline" onclick="addIngredientRow()" style="margin-bottom: 1.5rem;"><i class="fas fa-plus"></i> Add Ingredient</button><div style="background: var(--accent-soft); border-radius: 16px; padding: 1.5rem; margin-bottom: 1.5rem; border-left: 4px solid var(--accent);"><div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 1rem;"><i class="fas fa-tint" style="color: var(--accent);"></i><h3 style="color: var(--primary); font-size: 1.1rem; font-weight: 600;">Dilution</h3></div><div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 1rem; margin-bottom: 1rem;"><div style="display: flex; align-items: center; gap: 0.5rem;"><input type="radio" name="dilutionPreset" id="dilutionShake" value="shake" style="accent-color: var(--accent);"><label for="dilutionShake">Shake <span style="color: var(--accent); font-weight: 700;">25%</span></label></div><div style="display: flex; align-items: center; gap: 0.5rem;"><input type="radio" name="dilutionPreset" id="dilutionStir" value="stir" style="accent-color: var(--accent);"><label for="dilutionStir">Stir <span style="color: var(--accent); font-weight: 700;">20%</span></label></div><div style="display: flex; align-items: center; gap: 0.5rem;"><input type="radio" name="dilutionPreset" id="dilutionBuild" value="build" style="accent-color: var(--accent);"><label for="dilutionBuild">Build <span style="color: var(--accent); font-weight: 700;">10%</span></label></div><div style="display: flex; align-items: center; gap: 0.5rem;"><input type="radio" name="dilutionPreset" id="dilutionBlend" value="blend" style="accent-color: var(--accent);"><label for="dilutionBlend">Blend <span style="color: var(--accent); font-weight: 700;">50%</span></label></div><div style="display: flex; align-items: center; gap: 0.5rem;"><input type="radio" name="dilutionPreset" id="dilutionNone" value="none" checked style="accent-color: var(--accent);"><label for="dilutionNone">No Dilution <span style="color: var(--accent); font-weight: 700;">0%</span></label></div></div><div style="display: flex; align-items: center; gap: 0.5rem; margin-top: 0.5rem;"><input type="checkbox" id="useCustomDilution" onchange="toggleCustomDilution()" style="accent-color: var(--accent);"><label for="useCustomDilution">Custom dilution</label><input type="number" id="customDilutionValue" class="form-input" placeholder="%" min="0" max="100" step="1" style="width: 80px; margin-left: 1rem; display: none;" disabled onchange="calculateFinalABV()"></div></div><div id="finalAbvLiveDisplay" style="background: linear-gradient(135deg, var(--accent) 0%, var(--accent-light) 100%); color: white; padding: 1rem 1.5rem; border-radius: 12px; margin-bottom: 1.5rem; display: flex; justify-content: space-between; align-items: center;"><span><i class="fas fa-percent"></i> Final ABV (after dilution)</span><span class="final-abv-value" id="finalAbvValue" style="font-size: 1.5rem; font-weight: 700;">0.0%</span></div><div class="form-group" style="margin-bottom: 1.5rem;"><label style="font-weight: 600; color: var(--primary);">Method</label><textarea id="cocktailMethod" class="wide-textarea" placeholder="e.g., Stir over ice, strain into chilled coupe..." rows="4" required></textarea></div><div class="form-group" style="margin-bottom: 1.5rem;"><label style="font-weight: 600; color: var(--primary);">Notes</label><textarea id="cocktailNotes" class="wide-textarea" placeholder="Additional notes, variations, tips..." rows="3"></textarea></div><div style="display: flex; gap: 1rem; justify-content: flex-end; margin-top: 2rem;"><button type="button" class="btn btn-outline" onclick="closeModal('addCocktailModal')">Cancel</button><button type="submit" class="btn btn-primary"><i class="fas fa-save"></i> Save Cocktail</button></div></form></div></div>
+    <div id="addInfusionModal" class="modal" style="display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 2000; align-items: center; justify-content: center;"><div class="modal-content" style="background: var(--white); border-radius: 24px; padding: 2rem; max-width: 1000px; width: 95%; max-height: 90vh; overflow-y: auto;"><div class="modal-header"><h2 class="modal-title"><i class="fas fa-flask"></i> New Infusion</h2><button class="modal-close" onclick="closeModal('addInfusionModal')"><i class="fas fa-times"></i></button></div><form id="newInfusionForm" onsubmit="saveNewInfusion(event)"><div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 1.5rem; margin-bottom: 1.5rem;"><div class="form-group"><label>Name</label><input type="text" id="infusionName" class="form-input" placeholder="e.g., Spiced Pineapple Infusion" required></div><div class="form-group"><label>Author</label><input type="text" id="infusionAuthor" class="form-input" placeholder="e.g., Bar Manager" value="Bar Manager"></div><div class="form-group"><label>Date</label><input type="text" id="infusionDate" class="form-input" readonly style="background: var(--light);"></div></div><h3 style="color: var(--primary); margin-bottom: 1rem; font-size: 1.1rem;"><i class="fas fa-flask"></i> Recipe Ingredients</h3><table class="ingredient-table" style="width: 100%; border-collapse: collapse; margin-bottom: 1rem;"><thead><tr style="background: var(--light);"><th style="padding: 0.75rem; text-align: left;">Ingredient</th><th style="padding: 0.75rem; text-align: left;">Bottle (ml)</th><th style="padding: 0.75rem; text-align: left;">Cost ($)</th><th style="padding: 0.75rem; text-align: left;">Pour (ml)</th><th style="padding: 0.75rem; text-align: left;">Pour Cost</th><th style="padding: 0.75rem; text-align: left;">ABV %</th><th style="padding: 0.75rem; text-align: left;"></th></tr></thead><tbody id="infusionIngredientTableBody"></tbody></table><button type="button" class="btn btn-outline" onclick="addInfusionIngredientRow()" style="margin-bottom: 1.5rem;"><i class="fas fa-plus"></i> Add Ingredient</button><div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 1.5rem; margin-bottom: 1.5rem;"><div class="form-group"><label>Total Pour (ml)</label><input type="number" id="infusionTotalPour" class="form-input" readonly style="background: var(--light);" value="0"></div><div class="form-group"><label>Total Pour Cost ($)</label><input type="number" id="infusionTotalPourCost" class="form-input" readonly style="background: var(--light);" value="0.00"></div></div><div style="background: var(--accent-soft); border-radius: 16px; padding: 1.5rem; margin-bottom: 1.5rem; border-left: 4px solid var(--accent);"><h3 style="color: var(--primary); margin-bottom: 1rem; font-size: 1.1rem;"><i class="fas fa-info-circle"></i> Meta Data</h3><div class="form-group" style="margin-bottom: 1rem;"><label>Instructions</label><textarea id="infusionInstructions" class="wide-textarea" placeholder="Detailed infusion instructions..." rows="3"></textarea></div><div class="form-group" style="margin-bottom: 1rem;"><label>Allergens</label><input type="text" id="infusionAllergens" class="form-input" placeholder="e.g., Nuts, Dairy, Gluten..."></div><div class="form-group"><label>Notes</label><textarea id="infusionNotes" class="wide-textarea" placeholder="Additional notes..." rows="2"></textarea></div></div><div style="display: flex; gap: 1rem; justify-content: flex-end;"><button type="button" class="btn btn-outline" onclick="closeModal('addInfusionModal')">Cancel</button><button type="submit" class="btn btn-primary">Create Infusion</button></div></form></div></div>
+    <div id="addDistillationModal" class="modal" style="display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 2000; align-items: center; justify-content: center;"><div class="modal-content" style="background: var(--white); border-radius: 24px; padding: 2rem; max-width: 1000px; width: 95%; max-height: 90vh; overflow-y: auto;"><div class="modal-header"><h2 class="modal-title"><i class="fas fa-wine-bottle"></i> New Distillation</h2><button class="modal-close" onclick="closeModal('addDistillationModal')"><i class="fas fa-times"></i></button></div><form id="newDistillationForm" onsubmit="saveNewDistillation(event)"><div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 1.5rem; margin-bottom: 1.5rem;"><div class="form-group"><label>Name</label><input type="text" id="distillationName" class="form-input" placeholder="e.g., House Gin" required></div><div class="form-group"><label>Author</label><input type="text" id="distillationAuthor" class="form-input" placeholder="e.g., Head Distiller" value="Head Distiller"></div><div class="form-group"><label>Date</label><input type="text" id="distillationDate" class="form-input" readonly style="background: var(--light);"></div></div><h3 style="color: var(--primary); margin-bottom: 1rem; font-size: 1.1rem;"><i class="fas fa-flask"></i> Botanicals</h3><table class="ingredient-table" style="width: 100%; border-collapse: collapse; margin-bottom: 1rem;"><thead><tr style="background: var(--light);"><th style="padding: 0.75rem; text-align: left;">Botanical</th><th style="padding: 0.75rem; text-align: left;">Bottle (ml)</th><th style="padding: 0.75rem; text-align: left;">Cost ($)</th><th style="padding: 0.75rem; text-align: left;">Pour (ml)</th><th style="padding: 0.75rem; text-align: left;">Pour Cost</th><th style="padding: 0.75rem; text-align: left;">ABV %</th><th style="padding: 0.75rem; text-align: left;"></th></tr></thead><tbody id="distillationIngredientTableBody"></tbody></table><button type="button" class="btn btn-outline" onclick="addDistillationIngredientRow()" style="margin-bottom: 1.5rem;"><i class="fas fa-plus"></i> Add Botanical</button><div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 1.5rem; margin-bottom: 1.5rem;"><div class="form-group"><label>Total Pour (ml)</label><input type="number" id="distillationTotalPour" class="form-input" readonly style="background: var(--light);" value="0"></div><div class="form-group"><label>Total Pour Cost ($)</label><input type="number" id="distillationTotalPourCost" class="form-input" readonly style="background: var(--light);" value="0.00"></div></div><div style="background: var(--accent-soft); border-radius: 16px; padding: 1.5rem; margin-bottom: 1.5rem; border-left: 4px solid var(--accent);"><h3 style="color: var(--primary); margin-bottom: 1rem; font-size: 1.1rem;"><i class="fas fa-info-circle"></i> Meta Data</h3><div class="form-group" style="margin-bottom: 1rem;"><label>Instructions</label><textarea id="distillationInstructions" class="wide-textarea" placeholder="Detailed distillation instructions..." rows="3"></textarea></div><div class="form-group" style="margin-bottom: 1rem;"><label>Allergens</label><input type="text" id="distillationAllergens" class="form-input" placeholder="e.g., Nuts, Gluten..."></div><div class="form-group"><label>Notes</label><textarea id="distillationNotes" class="wide-textarea" placeholder="Additional notes..." rows="2"></textarea></div></div><div style="display: flex; gap: 1rem; justify-content: flex-end;"><button type="button" class="btn btn-outline" onclick="closeModal('addDistillationModal')">Cancel</button><button type="submit" class="btn btn-primary">Create Distillation</button></div></form></div></div>
+    
+    <div id="toastContainer"></div>
+
+    <script>
+        // Firebase Configuration
+        const firebaseConfig = {
+            apiKey: "AIzaSyB7kGc2bLxK9Q3xV5pQ8wR9yT2uN4mX6cA",
+            authDomain: "black-sheep-beverage.firebaseapp.com",
+            projectId: "black-sheep-beverage",
+            storageBucket: "black-sheep-beverage.appspot.com",
+            messagingSenderId: "123456789012",
+            appId: "1:123456789012:web:abc123def456ghi789jkl"
+        };
+
+        // Initialize Firebase
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore();
+        const auth = firebase.auth();
+
+        // App State
+        const AppState = {
+            venues: [],
+            classicCocktails: [],
+            spiritLibrary: [],
+            infusions: [],
+            distillations: [],
+            dilutionPresets: {
+                "shake": 0.25,
+                "stir": 0.20,
+                "build": 0.10,
+                "blend": 0.50,
+                "none": 0,
+                "spirit-driven": 0.18
+            },
+            currentPage: 'dashboard',
+            currentView: 'venues',
+            selectedVenue: null,
+            selectedCocktail: null,
+            selectedClassicCocktail: null,
+            selectedInfusion: null,
+            selectedDistillation: null,
+            scaleMethod: 'serving',
+            scaleQuantity: 1,
+            dilutionType: 'none',
+            customDilution: 0.20,
+            includeWater: true,
+            showScaledResults: false,
+            omittedIngredients: [],
+            selectedCocktailsForPrint: [],
+            nextCocktailId: 303,
+            nextClassicCocktailId: 1004,
+            nextVenueId: 4,
+            nextInfusionId: 1,
+            nextDistillationId: 1,
+            searchResults: [],
+            classicSearchTerm: '',
+            infusionSearchTerm: '',
+            distillationSearchTerm: '',
+            pdfPreviewData: null,
+            pdfPreviewType: null,
+            userId: null,
+            syncEnabled: false,
+            lastSync: null
+        };
+
+        // Sync Status
+        let syncTimeout = null;
+        let isSyncing = false;
+
+        // Initialize Auth State Observer
+        auth.onAuthStateChanged(async (user) => {
+            if (user) {
+                AppState.userId = user.uid;
+                document.getElementById('userMenu').style.display = 'flex';
+                document.getElementById('userEmail').textContent = user.email;
+                document.getElementById('authModal').classList.remove('active');
+                
+                // Load user data from Firestore
+                await loadUserData();
+                
+                // Enable auto-sync
+                AppState.syncEnabled = true;
+                updateSyncStatus('online', 'Synced');
+                
+                // Start listening for real-time updates
+                setupRealtimeSync();
+            } else {
+                AppState.userId = null;
+                AppState.syncEnabled = false;
+                document.getElementById('userMenu').style.display = 'none';
+                document.getElementById('authModal').classList.add('active');
+                updateSyncStatus('offline', 'Offline');
+                
+                // Load default data
+                loadDefaultData();
+            }
+        });
+
+        // Load Default Data (for offline mode)
+        function loadDefaultData() {
+            AppState.venues = [
+                { id: 1, name: "The Chinnery", location: "Central", image: "https://images.unsplash.com/photo-1514362545857-3bc16c4c7d1b?w=400", order: 1, cocktails: [] },
+                { id: 2, name: "La Vache", location: "SoHo", image: "https://images.unsplash.com/photo-1550966871-3ed9cd9edce3?w=400", order: 2, cocktails: [] },
+                { id: 3, name: "New Punjab Club", location: "Central", image: "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=400", order: 3, cocktails: [] }
+            ];
+            AppState.classicCocktails = [
+                { id: 1001, name: "Aviation", family: "Sour", image: "https://images.unsplash.com/photo-1551024701-1b5e0d7d5c9e?w=400", recipe: [], pourCost: 3.97, sellingPrice: 140, cogs: 2.84, finalAbv: 26.5, method: "Shake with ice", garnish: "Cherry", glassware: "Coupe", favorite: false },
+                { id: 1002, name: "Boulevardier", family: "Martini", image: "https://images.unsplash.com/photo-1575023782549-62ca0d244b39?w=400", recipe: [], pourCost: 4.54, sellingPrice: 135, cogs: 3.36, finalAbv: 28.5, method: "Stir with ice", garnish: "Orange peel", glassware: "Rocks glass", favorite: false }
+            ];
+            AppState.spiritLibrary = [
+                { id: "spirit-001", name: "Wild Turkey 101", type: "Bourbon", abv: 50.5, bottleSize: 750, bottleCost: 45, supplier: "Wild Turkey" },
+                { id: "spirit-002", name: "Monkey Shoulder", type: "Blended Scotch", abv: 40, bottleSize: 750, bottleCost: 38, supplier: "William Grant & Sons" }
+            ];
+            renderDashboard();
+        }
+
+        // Load User Data from Firestore
+        async function loadUserData() {
+            try {
+                updateSyncStatus('syncing', 'Loading...');
+                
+                const userDoc = await db.collection('users').doc(AppState.userId).get();
+                
+                if (userDoc.exists) {
+                    const data = userDoc.data();
+                    AppState.venues = data.venues || [];
+                    AppState.classicCocktails = data.classicCocktails || [];
+                    AppState.spiritLibrary = data.spiritLibrary || [];
+                    AppState.infusions = data.infusions || [];
+                    AppState.distillations = data.distillations || [];
+                    AppState.nextCocktailId = data.nextCocktailId || 303;
+                    AppState.nextClassicCocktailId = data.nextClassicCocktailId || 1004;
+                    AppState.nextVenueId = data.nextVenueId || 4;
+                    AppState.nextInfusionId = data.nextInfusionId || 1;
+                    AppState.nextDistillationId = data.nextDistillationId || 1;
+                    
+                    showToast('✅ Data loaded from cloud');
+                } else {
+                    // First time user - initialize with default data
+                    loadDefaultData();
+                    await saveToFirestore();
+                }
+                
+                updateSyncStatus('online', 'Synced');
+                renderDashboard();
+            } catch (error) {
+                console.error('Error loading user data:', error);
+                updateSyncStatus('offline', 'Offline');
+                showToast('⚠️ Using offline mode - ' + error.message);
+                loadDefaultData();
+            }
+        }
+
+        // Setup Realtime Sync
+        function setupRealtimeSync() {
+            db.collection('users').doc(AppState.userId)
+                .onSnapshot((doc) => {
+                    if (doc.exists && !isSyncing) {
+                        const data = doc.data();
+                        // Only update if the data is newer than last sync
+                        if (data.lastUpdated > (AppState.lastSync || 0)) {
+                            AppState.venues = data.venues || [];
+                            AppState.classicCocktails = data.classicCocktails || [];
+                            AppState.spiritLibrary = data.spiritLibrary || [];
+                            AppState.infusions = data.infusions || [];
+                            AppState.distillations = data.distillations || [];
+                            AppState.lastSync = data.lastUpdated;
+                            
+                            showToast('🔄 Data updated from cloud');
+                            refreshCurrentView();
+                        }
+                    }
+                }, (error) => {
+                    console.error('Realtime sync error:', error);
+                });
+        }
+
+        // Save to Firestore
+        async function saveToFirestore() {
+            if (!AppState.userId || !AppState.syncEnabled) return;
+            
+            try {
+                isSyncing = true;
+                updateSyncStatus('syncing', 'Saving...');
+                
+                const data = {
+                    venues: AppState.venues,
+                    classicCocktails: AppState.classicCocktails,
+                    spiritLibrary: AppState.spiritLibrary,
+                    infusions: AppState.infusions,
+                    distillations: AppState.distillations,
+                    nextCocktailId: AppState.nextCocktailId,
+                    nextClassicCocktailId: AppState.nextClassicCocktailId,
+                    nextVenueId: AppState.nextVenueId,
+                    nextInfusionId: AppState.nextInfusionId,
+                    nextDistillationId: AppState.nextDistillationId,
+                    lastUpdated: Date.now()
+                };
+                
+                await db.collection('users').doc(AppState.userId).set(data);
+                AppState.lastSync = data.lastUpdated;
+                
+                updateSyncStatus('online', 'Synced');
+                isSyncing = false;
+            } catch (error) {
+                console.error('Error saving to Firestore:', error);
+                updateSyncStatus('offline', 'Offline');
+                isSyncing = false;
+                showToast('❌ Sync failed - ' + error.message);
+            }
+        }
+
+        // Debounced Save
+        function debouncedSave() {
+            if (syncTimeout) clearTimeout(syncTimeout);
+            syncTimeout = setTimeout(() => {
+                saveToFirestore();
+            }, 2000);
+        }
+
+        // Update Sync Status UI
+        function updateSyncStatus(status, text) {
+            const syncEl = document.getElementById('syncStatus');
+            const textEl = document.getElementById('syncStatusText');
+            
+            syncEl.classList.remove('online', 'offline', 'syncing');
+            syncEl.classList.add(status);
+            textEl.textContent = text;
+        }
+
+        // Manual Sync
+        async function manualSync() {
+            updateSyncStatus('syncing', 'Syncing...');
+            await saveToFirestore();
+            showToast('✅ Manual sync complete');
+        }
+
+        // Export All Data
+        function exportAllData() {
+            const exportData = {
+                venues: AppState.venues,
+                classicCocktails: AppState.classicCocktails,
+                spiritLibrary: AppState.spiritLibrary,
+                infusions: AppState.infusions,
+                distillations: AppState.distillations,
+                exportDate: new Date().toISOString()
+            };
+            
+            const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `black-sheep-backup-${new Date().toISOString().split('T')[0]}.json`;
+            a.click();
+            URL.revokeObjectURL(url);
+            
+            showToast('✅ Backup exported');
+        }
+
+        // Import Backup
+        function importBackup() {
+            const input = document.createElement('input');
+            input.type = 'file';
+            input.accept = '.json';
+            
+            input.onchange = (e) => {
+                const file = e.target.files[0];
+                const reader = new FileReader();
+                
+                reader.onload = async (e) => {
+                    try {
+                        const data = JSON.parse(e.target.result);
+                        
+                        if (confirm('Importing will replace all current data. Continue?')) {
+                            AppState.venues = data.venues || [];
+                            AppState.classicCocktails = data.classicCocktails || [];
+                            AppState.spiritLibrary = data.spiritLibrary || [];
+                            AppState.infusions = data.infusions || [];
+                            AppState.distillations = data.distillations || [];
+                            
+                            await saveToFirestore();
+                            refreshCurrentView();
+                            showToast('✅ Backup imported successfully');
+                        }
+                    } catch (error) {
+                        showToast('❌ Invalid backup file');
+                    }
+                };
+                
+                reader.readAsText(file);
+            };
+            
+            input.click();
+        }
+
+        // Refresh Current View
+        function refreshCurrentView() {
+            switch (AppState.currentPage) {
+                case 'dashboard': renderDashboard(); break;
+                case 'drinks': renderVenuesGrid(); break;
+                case 'classic': renderClassicCocktails(); break;
+                case 'spirit-library': renderSpiritLibrary(); break;
+                case 'infusion': renderInfusionList(); break;
+                case 'distillation': renderDistillationList(); break;
+            }
+        }
+
+        // Auth Functions
+        function switchAuthTab(tab) {
+            document.querySelectorAll('.auth-tab').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.auth-form').forEach(f => f.classList.remove('active'));
+            
+            if (tab === 'login') {
+                document.querySelector('.auth-tab').classList.add('active');
+                document.getElementById('loginForm').classList.add('active');
+            } else {
+                document.querySelectorAll('.auth-tab')[1].classList.add('active');
+                document.getElementById('signupForm').classList.add('active');
+            }
+        }
+
+        async function handleLogin() {
+            const email = document.getElementById('loginEmail').value;
+            const password = document.getElementById('loginPassword').value;
+            const errorEl = document.getElementById('loginError');
+            
+            try {
+                await auth.signInWithEmailAndPassword(email, password);
+                errorEl.textContent = '';
+            } catch (error) {
+                errorEl.textContent = error.message;
+            }
+        }
+
+        async function handleSignUp() {
+            const email = document.getElementById('signupEmail').value;
+            const password = document.getElementById('signupPassword').value;
+            const errorEl = document.getElementById('signupError');
+            
+            if (password.length < 6) {
+                errorEl.textContent = 'Password must be at least 6 characters';
+                return;
+            }
+            
+            try {
+                await auth.createUserWithEmailAndPassword(email, password);
+                errorEl.textContent = '';
+            } catch (error) {
+                errorEl.textContent = error.message;
+            }
+        }
+
+        async function handleLogout() {
+            await auth.signOut();
+            location.reload();
+        }
+
+        function showSyncDetails() {
+            if (AppState.userId) {
+                showToast(`Last sync: ${AppState.lastSync ? new Date(AppState.lastSync).toLocaleString() : 'Never'}`);
+            } else {
+                showToast('Not signed in - data is local only');
+            }
+        }
+
+        // Override original persistState to use cloud sync
+        function persistState() {
+            if (AppState.userId && AppState.syncEnabled) {
+                debouncedSave();
+            }
+        }
+
+        // DOM Elements
+        const mainContent = document.getElementById('mainContent');
+        const sidebar = document.getElementById('sidebar');
+        const mobileMenuBtn = document.getElementById('mobileMenuBtn');
+
+        // Mobile Menu Toggle
+        mobileMenuBtn.addEventListener('click', () => {
+            sidebar.classList.toggle('active');
+        });
+
+        // Navigation
+        document.querySelectorAll('.nav-item').forEach(item => {
+            item.addEventListener('click', (e) => {
+                document.querySelectorAll('.nav-item').forEach(nav => nav.classList.remove('active'));
+                item.classList.add('active');
+                
+                const page = item.dataset.page;
+                AppState.currentPage = page;
+                
+                if (page === 'drinks') {
+                    AppState.currentView = 'venues';
+                    AppState.selectedVenue = null;
+                    AppState.selectedCocktail = null;
+                    renderVenuesGrid();
+                } else if (page === 'dashboard') {
+                    renderDashboard();
+                } else if (page === 'classic') {
+                    renderClassicCocktails();
+                } else if (page === 'spirit-library') {
+                    renderSpiritLibrary();
+                } else if (page === 'infusion') {
+                    renderInfusionList();
+                } else if (page === 'distillation') {
+                    renderDistillationList();
+                }
+                
+                if (window.innerWidth <= 768) sidebar.classList.remove('active');
+            });
+        });
+
+        // Populate venue dropdown
+        function populateVenueDropdown() {
+            const select = document.getElementById('cocktailVenue');
+            if (select) {
+                select.innerHTML = '<option value="">Select Venue...</option>';
+                AppState.venues.forEach(venue => {
+                    select.innerHTML += `<option value="${venue.id}">${venue.name}</option>`;
+                });
+            }
+        }
+
+        // Dashboard
+        function renderDashboard() {
+            const totalCocktails = AppState.venues.reduce((acc, venue) => acc + venue.cocktails.length, 0) + AppState.classicCocktails.length;
+            const totalSpirits = AppState.spiritLibrary.length;
+            const totalInfusions = AppState.infusions.length;
+            const totalDistillations = AppState.distillations.length;
+            const favorites = AppState.venues.flatMap(v => v.cocktails.filter(c => c.favorite));
+            
+            mainContent.innerHTML = `
+                <div class="top-header">
+                    <div style="display: flex; align-items: center; gap: 1rem; flex-wrap: wrap;">
+                        <h1 class="page-title">
+                            <i class="fas fa-home"></i> Dashboard
+                        </h1>
+                        <div class="theme-toggle">
+                            <button id="themeOrangeBtn" class="theme-toggle-btn active" onclick="toggleTheme('orange')">
+                                <i class="fas fa-sun"></i> Orange
+                            </button>
+                            <button id="themeBlueBtn" class="theme-toggle-btn" onclick="toggleTheme('blue')">
+                                <i class="fas fa-water"></i> Light Blue
+                            </button>
+                        </div>
+                    </div>
+                    <div class="search-container">
+                        <i class="fas fa-search"></i>
+                        <input type="text" placeholder="Quick search..." id="globalSearch" onkeyup="handleGlobalSearch()" autocomplete="off">
+                        <div id="globalSearchResults" class="search-results"></div>
+                    </div>
+                </div>
+
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1.5rem; margin-bottom: 2rem;">
+                    <div style="background: var(--white); border-radius: 20px; padding: 1.5rem; box-shadow: 0 2px 4px rgba(0,0,0,0.02);">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                            <div style="font-size: 1.25rem; font-weight: 700; color: var(--dark); display: flex; align-items: center; gap: 0.75rem;">
+                                <i class="fas fa-cocktail" style="color: var(--accent);"></i> Total Cocktails
+                            </div>
+                        </div>
+                        <h2 style="font-size: 3rem; color: var(--accent);">${totalCocktails}</h2>
+                        <p style="color: var(--gray);">Across ${AppState.venues.length} venues + Classics</p>
+                    </div>
+                    <div style="background: var(--white); border-radius: 20px; padding: 1.5rem; box-shadow: 0 2px 4px rgba(0,0,0,0.02);">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                            <div style="font-size: 1.25rem; font-weight: 700; color: var(--dark); display: flex; align-items: center; gap: 0.75rem;">
+                                <i class="fas fa-wine-bottle" style="color: var(--accent);"></i> Spirit Library
+                            </div>
+                        </div>
+                        <h2 style="font-size: 3rem; color: var(--accent);">${totalSpirits}</h2>
+                        <p style="color: var(--gray);">Active spirits</p>
+                    </div>
+                    <div style="background: var(--white); border-radius: 20px; padding: 1.5rem; box-shadow: 0 2px 4px rgba(0,0,0,0.02);">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                            <div style="font-size: 1.25rem; font-weight: 700; color: var(--dark); display: flex; align-items: center; gap: 0.75rem;">
+                                <i class="fas fa-star" style="color: var(--accent);"></i> Favorites
+                            </div>
+                        </div>
+                        <h2 style="font-size: 3rem; color: var(--accent);">${favorites.length}</h2>
+                        <p style="color: var(--gray);">Starred cocktails</p>
+                    </div>
+                </div>
+            `;
+
+            document.addEventListener('click', (e) => {
+                const searchContainer = document.querySelector('.search-container');
+                if (searchContainer && !searchContainer.contains(e.target)) {
+                    const results = document.getElementById('globalSearchResults');
+                    if (results) results.style.display = 'none';
+                }
+            });
+        }
+
+        // Theme Management
+        function toggleTheme(theme) {
+            const body = document.getElementById('appBody');
+            if (theme === 'orange') {
+                body.classList.remove('theme-blue');
+                body.classList.add('theme-orange');
+                currentTheme = 'orange';
+                document.getElementById('themeOrangeBtn')?.classList.add('active');
+                document.getElementById('themeBlueBtn')?.classList.remove('active');
+            } else {
+                body.classList.remove('theme-orange');
+                body.classList.add('theme-blue');
+                currentTheme = 'blue';
+                document.getElementById('themeBlueBtn')?.classList.add('active');
+                document.getElementById('themeOrangeBtn')?.classList.remove('active');
+            }
+            showToast(`Theme switched to ${theme === 'orange' ? 'Orange' : 'Light Blue'}`);
+        }
+
+        // Global Search
+        function handleGlobalSearch() {
+            const searchInput = document.getElementById('globalSearch');
+            if (!searchInput) return;
+            
+            const searchTerm = searchInput.value.toLowerCase();
+            const resultsContainer = document.getElementById('globalSearchResults');
+            
+            if (searchTerm.length < 1) {
+                resultsContainer.style.display = 'none';
+                return;
+            }
+
+            const results = [];
+
+            AppState.venues.forEach(venue => {
+                venue.cocktails.forEach(cocktail => {
+                    if (cocktail.name.toLowerCase().includes(searchTerm)) {
+                        results.push({
+                            type: 'Cocktail',
+                            name: cocktail.name,
+                            venue: venue.name,
+                            action: () => viewCocktailDetail(venue.id, cocktail.id)
+                        });
+                    }
+                });
+            });
+
+            AppState.classicCocktails.forEach(cocktail => {
+                if (cocktail.name.toLowerCase().includes(searchTerm)) {
+                    results.push({
+                        type: 'Classic Cocktail',
+                        name: cocktail.name,
+                        action: () => viewClassicCocktailDetail(cocktail.id)
+                    });
+                }
+            });
+
+            AppState.spiritLibrary.forEach(spirit => {
+                if (spirit.name.toLowerCase().includes(searchTerm) || spirit.type.toLowerCase().includes(searchTerm)) {
+                    results.push({
+                        type: 'Spirit',
+                        name: spirit.name,
+                        brand: spirit.type,
+                        action: () => {
+                            AppState.currentPage = 'spirit-library';
+                            renderSpiritLibrary();
+                        }
+                    });
+                }
+            });
+
+            AppState.infusions.forEach(infusion => {
+                if (infusion.name.toLowerCase().includes(searchTerm)) {
+                    results.push({
+                        type: 'Infusion',
+                        name: infusion.name,
+                        action: () => viewInfusionDetail(infusion.id)
+                    });
+                }
+            });
+
+            AppState.distillations.forEach(distillation => {
+                if (distillation.name.toLowerCase().includes(searchTerm)) {
+                    results.push({
+                        type: 'Distillation',
+                        name: distillation.name,
+                        action: () => viewDistillationDetail(distillation.id)
+                    });
+                }
+            });
+
+            AppState.searchResults = results;
+            resultsContainer.innerHTML = results.slice(0, 10).map(result => `
+                <div class="search-result-item" onclick="executeSearchResult(this, '${result.type}', '${result.name}')">
+                    <div class="search-result-category">${result.type}</div>
+                    <div style="font-weight: 600;">${result.name}</div>
+                    <div style="font-size: 0.75rem; color: var(--gray);">${result.venue || result.brand || ''}</div>
+                </div>
+            `).join('');
+            
+            resultsContainer.style.display = results.length ? 'block' : 'none';
+        }
+
+        function executeSearchResult(element, type, name) {
+            const result = AppState.searchResults.find(r => r.type === type && r.name === name);
+            if (result?.action) result.action();
+            document.getElementById('globalSearchResults').style.display = 'none';
+            document.getElementById('globalSearch').value = '';
+        }
+
+        // VENUES
+        function renderVenuesGrid() {
+            const sortedVenues = [...AppState.venues].sort((a, b) => a.order - b.order);
+            
+            mainContent.innerHTML = `
+                <div class="top-header">
+                    <h1 class="page-title">
+                        <i class="fas fa-store"></i> Venues
+                    </h1>
+                    <button class="btn btn-primary" onclick="openAddVenueModal()">
+                        <i class="fas fa-plus"></i> New Venue
+                    </button>
+                </div>
+
+                <div class="venue-grid" id="venueGrid">
+                    ${sortedVenues.map(venue => `
+                        <div class="venue-card" data-id="${venue.id}" data-order="${venue.order}">
+                            <div class="venue-drag-handle">
+                                <i class="fas fa-grip-vertical"></i>
+                            </div>
+                            <div class="venue-image">
+                                <img src="${venue.image || 'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=400'}" alt="${venue.name}">
+                                <div class="venue-image-upload" onclick="event.stopPropagation(); document.getElementById('venueImageUpload_${venue.id}').click()">
+                                    <i class="fas fa-camera"></i> Change
+                                    <input type="file" id="venueImageUpload_${venue.id}" accept="image/*" style="display: none;" onchange="uploadVenueImage(${venue.id}, event)">
+                                </div>
+                            </div>
+                            <div class="venue-info">
+                                <div class="venue-name-large">${venue.name}</div>
+                                <div class="venue-location"><i class="fas fa-location-dot"></i> ${venue.location}</div>
+                                <div class="venue-stats">
+                                    <div class="venue-stat" onclick="selectVenue(${venue.id})">
+                                        <i class="fas fa-cocktail"></i> ${venue.cocktails.length} Cocktails
+                                    </div>
+                                </div>
+                                <div class="venue-actions">
+                                    <button class="venue-action-btn venue-edit-btn" onclick="event.stopPropagation(); editVenue(${venue.id})">
+                                        <i class="fas fa-edit"></i> Edit
+                                    </button>
+                                    <button class="venue-action-btn venue-overview-btn" onclick="event.stopPropagation(); viewCocktailOverview(${venue.id})">
+                                        <i class="fas fa-list"></i> Menu
+                                    </button>
+                                    <button class="venue-action-btn venue-delete-btn" onclick="event.stopPropagation(); deleteVenue(${venue.id})">
+                                        <i class="fas fa-trash"></i> Delete
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    `).join('')}
+                </div>
+            `;
+
+            setTimeout(() => {
+                const venueGrid = document.getElementById('venueGrid');
+                if (venueGrid) {
+                    new Sortable(venueGrid, {
+                        animation: 150,
+                        handle: '.venue-drag-handle',
+                        onEnd: () => {
+                            const cards = document.querySelectorAll('.venue-card');
+                            cards.forEach((card, i) => {
+                                const venue = AppState.venues.find(v => v.id === parseInt(card.dataset.id));
+                                if (venue) venue.order = i + 1;
+                            });
+                            AppState.venues.sort((a, b) => a.order - b.order);
+                            persistState();
+                            showToast('Venue order updated');
+                        }
+                    });
+                }
+            }, 100);
+        }
+
+        // Select Venue
+        function selectVenue(venueId) {
+            const venue = AppState.venues.find(v => v.id === venueId);
+            if (!venue) return;
+            
+            AppState.currentView = 'cocktails';
+            AppState.selectedVenue = venueId;
+            AppState.selectedCocktail = null;
+            
+            const sortedCocktails = [...venue.cocktails].sort((a, b) => a.name.localeCompare(b.name));
+            
+            mainContent.innerHTML = `
+                <div class="top-header">
+                    <div style="display: flex; align-items: center; gap: 1rem;">
+                        <button class="back-button" onclick="renderVenuesGrid()">
+                            <i class="fas fa-arrow-left"></i> Back to Venues
+                        </button>
+                        <h1 class="page-title" style="margin-left: 1rem;">
+                            <i class="fas fa-cocktail"></i> ${venue.name}
+                        </h1>
+                    </div>
+                    <button class="btn btn-primary" onclick="openAddCocktailModalForVenue(${venue.id})">
+                        <i class="fas fa-plus"></i> New Cocktail
+                    </button>
+                </div>
+
+                <div class="item-list">
+                    ${sortedCocktails.map(cocktail => `
+                        <div class="item-card" onclick="viewCocktailDetail(${venue.id}, ${cocktail.id})">
+                            <div class="item-thumbnail">
+                                <img src="${cocktail.image || 'https://images.unsplash.com/photo-1514362545857-3bc16c4c7d1b?w=100'}" alt="${cocktail.name}">
+                            </div>
+                            <div class="item-info">
+                                <div class="item-name">
+                                    ${cocktail.name}
+                                    ${cocktail.favorite ? '<i class="fas fa-star favorite-star"></i>' : ''}
+                                </div>
+                                <div class="item-meta">
+                                    <span><i class="fas fa-wine-glass"></i> ${cocktail.glassware}</span>
+                                    <span><i class="fas fa-leaf"></i> ${cocktail.garnish}</span>
+                                    <span><i class="fas fa-percent"></i> ${cocktail.finalAbv.toFixed(1)}% ABV</span>
+                                    <span class="item-badge">$${cocktail.sellingPrice}</span>
+                                    <button class="action-btn" onclick="event.stopPropagation(); editCocktail(${venue.id}, ${cocktail.id})">
+                                        <i class="fas fa-edit"></i> Edit
+                                    </button>
+                                    <button class="action-btn share-btn" onclick="event.stopPropagation(); shareCocktail(${venue.id}, ${cocktail.id})">
+                                        <i class="fas fa-share-alt"></i> Share
+                                    </button>
+                                    <button class="action-btn" onclick="event.stopPropagation(); toggleFavorite(${venue.id}, ${cocktail.id})" 
+                                            style="border-color: var(--accent); color: var(--accent);">
+                                        <i class="fa${cocktail.favorite ? 's' : 'r'} fa-star"></i>
+                                    </button>
+                                </div>
+                                <div style="margin-top: 0.5rem; color: var(--gray); font-size: 0.875rem;">
+                                    ${cocktail.recipe.length} ingredients • COGS: ${cocktail.cogs}%
+                                </div>
+                            </div>
+                        </div>
+                    `).join('')}
+                    ${!venue.cocktails.length ? `
+                        <div style="background: var(--white); border-radius: 20px; padding: 3rem; text-align: center;">
+                            <i class="fas fa-cocktail" style="font-size: 3rem; color: var(--accent); margin-bottom: 1rem;"></i>
+                            <h3 style="color: var(--primary); margin-bottom: 0.5rem;">No Cocktails Yet</h3>
+                            <p style="color: var(--gray); margin-bottom: 1.5rem;">Add your first cocktail by clicking the button above.</p>
+                            <button class="btn btn-primary" onclick="openAddCocktailModalForVenue(${venue.id})">
+                                <i class="fas fa-plus"></i> Create Cocktail
+                            </button>
+                        </div>
+                    ` : ''}
+                </div>
+            `;
+        }
+
+        // View Cocktail Detail
+        function viewCocktailDetail(venueId, cocktailId) {
+            const venue = AppState.venues.find(v => v.id === venueId);
+            const cocktail = venue?.cocktails.find(c => c.id === cocktailId);
+            if (!cocktail) return;
+            
+            AppState.currentView = 'detail';
+            AppState.selectedVenue = venueId;
+            AppState.selectedCocktail = cocktailId;
+            
+            mainContent.innerHTML = `
+                <div class="top-header">
+                    <div style="display: flex; align-items: center; gap: 1rem;">
+                        <button class="back-button" onclick="selectVenue(${venueId})">
+                            <i class="fas fa-arrow-left"></i> Back to ${venue.name}
+                        </button>
+                    </div>
+                    <div style="display: flex; gap: 1rem;">
+                        <button class="btn btn-primary" onclick="editCocktail(${venueId}, ${cocktailId})">
+                            <i class="fas fa-edit"></i> Edit
+                        </button>
+                        <button class="btn btn-outline" onclick="shareCocktail(${venueId}, ${cocktailId})">
+                            <i class="fas fa-share-alt"></i> Share
+                        </button>
+                    </div>
+                </div>
+
+                <div class="cocktail-detail-page">
+                    <div class="detail-content">
+                        <h1>${cocktail.name}</h1>
+                        <p>${cocktail.method}</p>
+                    </div>
+                </div>
+            `;
+        }
+
+        // View Classic Cocktail Detail
+        function viewClassicCocktailDetail(cocktailId) {
+            const cocktail = AppState.classicCocktails.find(c => c.id === cocktailId);
+            if (!cocktail) return;
+            
+            AppState.currentView = 'classic-detail';
+            AppState.selectedClassicCocktail = cocktailId;
+            
+            mainContent.innerHTML = `
+                <div class="top-header">
+                    <div style="display: flex; align-items: center; gap: 1rem;">
+                        <button class="back-button" onclick="renderClassicCocktails()">
+                            <i class="fas fa-arrow-left"></i> Back to Classics
+                        </button>
+                    </div>
+                </div>
+
+                <div class="cocktail-detail-page">
+                    <div class="detail-content">
+                        <h1>${cocktail.name}</h1>
+                        <p>${cocktail.method}</p>
+                    </div>
+                </div>
+            `;
+        }
+
+        // View Infusion Detail
+        function viewInfusionDetail(infusionId) {
+            const infusion = AppState.infusions.find(i => i.id === infusionId);
+            if (!infusion) return;
+            showToast(`Viewing ${infusion.name}`);
+        }
+
+        // View Distillation Detail
+        function viewDistillationDetail(distillationId) {
+            const distillation = AppState.distillations.find(d => d.id === distillationId);
+            if (!distillation) return;
+            showToast(`Viewing ${distillation.name}`);
+        }
+
+        // Render Classic Cocktails
+        function renderClassicCocktails() {
+            const sortedClassics = [...AppState.classicCocktails].sort((a, b) => a.name.localeCompare(b.name));
+            
+            mainContent.innerHTML = `
+                <div class="top-header">
+                    <h1 class="page-title">
+                        <i class="fas fa-book"></i> Classic Cocktails
+                    </h1>
+                    <button class="btn btn-primary" onclick="openAddClassicCocktailModal()">
+                        <i class="fas fa-plus"></i> New Classic
+                    </button>
+                </div>
+
+                <div class="item-list">
+                    ${sortedClassics.map(cocktail => `
+                        <div class="classic-card" onclick="viewClassicCocktailDetail(${cocktail.id})">
+                            <div class="classic-info">
+                                <div class="classic-name">${cocktail.name}</div>
+                            </div>
+                        </div>
+                    `).join('')}
+                </div>
+            `;
+        }
+
+        // Render Spirit Library
+        function renderSpiritLibrary() {
+            mainContent.innerHTML = `
+                <div class="top-header">
+                    <h1 class="page-title">
+                        <i class="fas fa-wine-bottle"></i> Spirit Library
+                    </h1>
+                    <div style="display: flex; gap: 1rem;">
+                        <button class="btn btn-outline" onclick="exportSpiritLibrary()">
+                            <i class="fas fa-download"></i> Export
+                        </button>
+                        <button class="btn btn-primary" onclick="document.getElementById('excelImport').click()">
+                            <i class="fas fa-file-import"></i> Import Excel
+                        </button>
+                        <input type="file" id="excelImport" accept=".xlsx, .xls, .csv" style="display: none;" onchange="importSpiritLibrary(event)">
+                    </div>
+                </div>
+
+                <div class="spirit-library-container">
+                    <div class="import-section">
+                        <div class="import-area" onclick="document.getElementById('excelImport').click()">
+                            <i class="fas fa-cloud-upload-alt" style="font-size: 3rem; color: var(--accent); margin-bottom: 1rem;"></i>
+                            <h3 style="color: var(--primary); margin-bottom: 0.5rem;">Import Spirit Library</h3>
+                            <p style="color: var(--gray); margin-bottom: 1rem;">Upload Excel file to update spirit database</p>
+                        </div>
+                    </div>
+
+                    <table class="spirit-table">
+                        <thead>
+                            <tr>
+                                <th>Category</th>
+                                <th>Product</th>
+                                <th>Size (ml)</th>
+                                <th>Cost ($)</th>
+                                <th>ABV (%)</th>
+                                <th>Supplier</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${AppState.spiritLibrary.map(spirit => `
+                                <tr>
+                                    <td>${spirit.type}</td>
+                                    <td>${spirit.name}</td>
+                                    <td>${spirit.bottleSize}ml</td>
+                                    <td>$${spirit.bottleCost.toFixed(2)}</td>
+                                    <td>${spirit.abv}%</td>
+                                    <td>${spirit.supplier || '-'}</td>
+                                    <td>
+                                        <button class="spirit-edit-btn" onclick="openSpiritEditModal('${spirit.id}')">Edit</button>
+                                        <button class="spirit-delete-btn" onclick="deleteSpirit('${spirit.id}')">Delete</button>
+                                    </td>
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                    </table>
+                </div>
+            `;
+        }
+
+        // Render Infusion List
+        function renderInfusionList() {
+            mainContent.innerHTML = `
+                <div class="top-header">
+                    <h1 class="page-title">
+                        <i class="fas fa-flask"></i> Infusion Lab
+                    </h1>
+                    <button class="btn btn-primary" onclick="openAddInfusionModal()">
+                        <i class="fas fa-plus"></i> New Infusion
+                    </button>
+                </div>
+                <div class="item-list">
+                    ${AppState.infusions.map(infusion => `
+                        <div class="item-card" onclick="viewInfusionDetail(${infusion.id})">
+                            <div class="item-info">
+                                <div class="item-name">${infusion.name}</div>
+                            </div>
+                        </div>
+                    `).join('')}
+                </div>
+            `;
+        }
+
+        // Render Distillation List
+        function renderDistillationList() {
+            mainContent.innerHTML = `
+                <div class="top-header">
+                    <h1 class="page-title">
+                        <i class="fas fa-wine-bottle"></i> Distillation
+                    </h1>
+                    <button class="btn btn-primary" onclick="openAddDistillationModal()">
+                        <i class="fas fa-plus"></i> New Distillation
+                    </button>
+                </div>
+                <div class="item-list">
+                    ${AppState.distillations.map(distillation => `
+                        <div class="item-card" onclick="viewDistillationDetail(${distillation.id})">
+                            <div class="item-info">
+                                <div class="item-name">${distillation.name}</div>
+                            </div>
+                        </div>
+                    `).join('')}
+                </div>
+            `;
+        }
+
+        // View Cocktail Overview
+        function viewCocktailOverview(venueId) {
+            const venue = AppState.venues.find(v => v.id === venueId);
+            if (!venue) return;
+            
+            mainContent.innerHTML = `
+                <div class="top-header">
+                    <div style="display: flex; align-items: center; gap: 1rem;">
+                        <button class="back-button" onclick="renderVenuesGrid()">
+                            <i class="fas fa-arrow-left"></i> Back to Venues
+                        </button>
+                        <h1 class="page-title">${venue.name} - Menu Overview</h1>
+                    </div>
+                </div>
+                <div class="overview-container">
+                    <p>Menu overview coming soon...</p>
+                </div>
+            `;
+        }
+
+        // Spirit Library Functions
+        function openSpiritEditModal(spiritId) {
+            const spirit = AppState.spiritLibrary.find(s => s.id === spiritId);
+            if (!spirit) return;
+            
+            document.getElementById('editSpiritId').value = spirit.id;
+            document.getElementById('editSpiritName').value = spirit.name;
+            document.getElementById('editSpiritType').value = spirit.type;
+            document.getElementById('editSpiritABV').value = spirit.abv;
+            document.getElementById('editSpiritBottleSize').value = spirit.bottleSize;
+            document.getElementById('editSpiritBottleCost').value = spirit.bottleCost;
+            document.getElementById('editSpiritSupplier').value = spirit.supplier || '';
+            
+            document.getElementById('spiritEditModal').style.display = 'flex';
+        }
+
+        function closeSpiritEditModal() {
+            document.getElementById('spiritEditModal').style.display = 'none';
+        }
+
+        function saveSpiritChanges(event) {
+            event.preventDefault();
+            
+            const spiritId = document.getElementById('editSpiritId').value;
+            const spirit = AppState.spiritLibrary.find(s => s.id === spiritId);
+            
+            if (spirit) {
+                spirit.name = document.getElementById('editSpiritName').value;
+                spirit.type = document.getElementById('editSpiritType').value;
+                spirit.abv = parseFloat(document.getElementById('editSpiritABV').value);
+                spirit.bottleSize = parseFloat(document.getElementById('editSpiritBottleSize').value);
+                spirit.bottleCost = parseFloat(document.getElementById('editSpiritBottleCost').value);
+                spirit.supplier = document.getElementById('editSpiritSupplier').value;
+                
+                persistState();
+                closeSpiritEditModal();
+                renderSpiritLibrary();
+                showToast(`✅ ${spirit.name} updated`);
+            }
+        }
+
+        function deleteSpirit(spiritId) {
+            if (confirm('Delete this spirit?')) {
+                const index = AppState.spiritLibrary.findIndex(s => s.id === spiritId);
+                if (index !== -1) {
+                    AppState.spiritLibrary.splice(index, 1);
+                    persistState();
+                    renderSpiritLibrary();
+                    showToast('✅ Spirit deleted');
+                }
+            }
+        }
+
+        function exportSpiritLibrary() {
+            const exportData = AppState.spiritLibrary.map(spirit => ({
+                Category: spirit.type,
+                Product: spirit.name,
+                'Size (ml)': spirit.bottleSize,
+                'Cost ($)': spirit.bottleCost.toFixed(2),
+                'ABV (%)': spirit.abv.toFixed(1),
+                Supplier: spirit.supplier || ''
+            }));
+
+            const wb = XLSX.utils.book_new();
+            const ws = XLSX.utils.json_to_sheet(exportData);
+            XLSX.utils.book_append_sheet(wb, ws, 'Spirit Library');
+            XLSX.writeFile(wb, `Spirit_Library_${new Date().toISOString().split('T')[0]}.xlsx`);
+            showToast('✅ Spirit library exported');
+        }
+
+        function importSpiritLibrary(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const data = new Uint8Array(e.target.result);
+                    const workbook = XLSX.read(data, { type: 'array' });
+                    const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+                    const jsonData = XLSX.utils.sheet_to_json(firstSheet);
+                    
+                    const newSpirits = jsonData.map((row, index) => ({
+                        id: `spirit-${Date.now()}-${index}`,
+                        name: row.Product || row.product || 'Unknown',
+                        type: row.Category || row.category || 'Spirit',
+                        abv: parseFloat(row['ABV (%)'] || row.abv || 0),
+                        bottleSize: parseFloat(row['Size (ml)'] || row.size || 750),
+                        bottleCost: parseFloat(row['Cost ($)'] || row.cost || 0),
+                        supplier: row.Supplier || row.supplier || ''
+                    })).filter(s => s.name !== 'Unknown');
+                    
+                    AppState.spiritLibrary = [...AppState.spiritLibrary, ...newSpirits];
+                    persistState();
+                    renderSpiritLibrary();
+                    showToast(`✅ Imported ${newSpirits.length} spirits`);
+                } catch (error) {
+                    showToast('❌ Error importing file');
+                }
+            };
+            reader.readAsArrayBuffer(file);
+            event.target.value = '';
+        }
+
+        // Venue Functions
+        function editVenue(venueId) {
+            const venue = AppState.venues.find(v => v.id === venueId);
+            if (venue) {
+                document.getElementById('editVenueId').value = venue.id;
+                document.getElementById('editVenueName').value = venue.name;
+                document.getElementById('editVenueLocation').value = venue.location;
+                document.getElementById('editVenueModal').style.display = 'flex';
+            }
+        }
+
+        function saveVenueChanges(event) {
+            event.preventDefault();
+            const venueId = parseInt(document.getElementById('editVenueId').value);
+            const venue = AppState.venues.find(v => v.id === venueId);
+            if (venue) {
+                venue.name = document.getElementById('editVenueName').value;
+                venue.location = document.getElementById('editVenueLocation').value;
+                persistState();
+                closeModal('editVenueModal');
+                renderVenuesGrid();
+                showToast('✅ Venue updated');
+            }
+        }
+
+        function deleteVenue(venueId) {
+            if (confirm('Delete this venue? All cocktails will be lost.')) {
+                const index = AppState.venues.findIndex(v => v.id === venueId);
+                if (index !== -1) {
+                    AppState.venues.splice(index, 1);
+                    persistState();
+                    renderVenuesGrid();
+                    showToast('✅ Venue deleted');
+                }
+            }
+        }
+
+        function uploadVenueImage(venueId, event) {
+            const file = event.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    const venue = AppState.venues.find(v => v.id === venueId);
+                    if (venue) {
+                        venue.image = e.target.result;
+                        persistState();
+                        renderVenuesGrid();
+                        showToast(`✅ ${venue.name} image updated`);
+                    }
+                };
+                reader.readAsDataURL(file);
+            }
+        }
+
+        function openAddVenueModal() {
+            const name = prompt('Enter venue name:');
+            if (name) {
+                const location = prompt('Enter location:');
+                AppState.venues.push({
+                    id: AppState.nextVenueId++,
+                    name,
+                    location: location || 'TBD',
+                    image: 'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=400',
+                    order: AppState.venues.length + 1,
+                    cocktails: []
+                });
+                persistState();
+                renderVenuesGrid();
+                showToast(`✅ ${name} added`);
+            }
+        }
+
+        // Cocktail Functions
+        function openAddCocktailModalForVenue(venueId) {
+            openAddCocktailModal();
+            document.getElementById('venueSelectionField').style.display = 'none';
+            document.getElementById('cocktailVenue').value = venueId;
+        }
+
+        function openAddCocktailModal() {
+            document.getElementById('addCocktailModal').style.display = 'flex';
+            populateVenueDropdown();
+        }
+
+        function openAddClassicCocktailModal() {
+            openAddCocktailModal();
+            document.getElementById('venueSelectionField').style.display = 'none';
+        }
+
+        function saveNewCocktail(event) {
+            event.preventDefault();
+            
+            const venueId = document.getElementById('cocktailVenue').value;
+            const name = document.getElementById('cocktailName').value;
+            
+            if (!name || !venueId) {
+                showToast('Please fill required fields');
+                return;
+            }
+            
+            const venue = AppState.venues.find(v => v.id == venueId);
+            if (venue) {
+                const newCocktail = {
+                    id: AppState.nextCocktailId++,
+                    name,
+                    family: document.getElementById('cocktailFamily').value,
+                    recipe: [],
+                    pourCost: 0,
+                    sellingPrice: parseFloat(document.getElementById('cocktailSellingPrice').value) || 0,
+                    cogs: 0,
+                    finalAbv: 0,
+                    method: document.getElementById('cocktailMethod').value,
+                    garnish: document.getElementById('cocktailGarnish').value,
+                    glassware: document.getElementById('cocktailGlass').value,
+                    favorite: false,
+                    image: '',
+                    notes: document.getElementById('cocktailNotes').value
+                };
+                
+                venue.cocktails.push(newCocktail);
+                persistState();
+                closeModal('addCocktailModal');
+                selectVenue(venue.id);
+                showToast(`✅ ${newCocktail.name} added`);
+            }
+        }
+
+        function editCocktail(venueId, cocktailId) {
+            const venue = AppState.venues.find(v => v.id === venueId);
+            const cocktail = venue?.cocktails.find(c => c.id === cocktailId);
+            if (!cocktail) return;
+            
+            openAddCocktailModal();
+            document.getElementById('venueSelectionField').style.display = 'none';
+            document.getElementById('cocktailVenue').value = venueId;
+            document.getElementById('cocktailName').value = cocktail.name;
+            document.getElementById('cocktailFamily').value = cocktail.family;
+            document.getElementById('cocktailSellingPrice').value = cocktail.sellingPrice;
+            document.getElementById('cocktailGlass').value = cocktail.glassware;
+            document.getElementById('cocktailGarnish').value = cocktail.garnish;
+            document.getElementById('cocktailMethod').value = cocktail.method;
+            document.getElementById('cocktailNotes').value = cocktail.notes || '';
+            
+            const form = document.getElementById('newCocktailForm');
+            form.onsubmit = (e) => updateCocktail(e, venueId, cocktailId);
+        }
+
+        function updateCocktail(event, venueId, cocktailId) {
+            event.preventDefault();
+            
+            const venue = AppState.venues.find(v => v.id === venueId);
+            const cocktail = venue?.cocktails.find(c => c.id === cocktailId);
+            
+            if (cocktail) {
+                cocktail.name = document.getElementById('cocktailName').value;
+                cocktail.family = document.getElementById('cocktailFamily').value;
+                cocktail.sellingPrice = parseFloat(document.getElementById('cocktailSellingPrice').value);
+                cocktail.glassware = document.getElementById('cocktailGlass').value;
+                cocktail.garnish = document.getElementById('cocktailGarnish').value;
+                cocktail.method = document.getElementById('cocktailMethod').value;
+                cocktail.notes = document.getElementById('cocktailNotes').value;
+                
+                persistState();
+                closeModal('addCocktailModal');
+                viewCocktailDetail(venueId, cocktailId);
+                showToast(`✅ ${cocktail.name} updated`);
+            }
+            
+            const form = document.getElementById('newCocktailForm');
+            form.onsubmit = saveNewCocktail;
+        }
+
+        // Share Functions
+        function shareCocktail(venueId, cocktailId) {
+            const venue = AppState.venues.find(v => v.id === venueId);
+            const cocktail = venue?.cocktails.find(c => c.id === cocktailId);
+            if (!cocktail) return;
+            
+            const message = `*${cocktail.name}* at ${venue.name}\n\n${cocktail.method}`;
+            window.open(`https://wa.me/?text=${encodeURIComponent(message)}`, '_blank');
+        }
+
+        // Toggle Favorite
+        function toggleFavorite(venueId, cocktailId) {
+            const venue = AppState.venues.find(v => v.id === venueId);
+            const cocktail = venue?.cocktails.find(c => c.id === cocktailId);
+            if (cocktail) {
+                cocktail.favorite = !cocktail.favorite;
+                persistState();
+                showToast(cocktail.favorite ? '⭐ Added to favorites' : 'Removed from favorites');
+                selectVenue(venueId);
+            }
+        }
+
+        // Infusion Functions
+        function openAddInfusionModal() {
+            document.getElementById('addInfusionModal').style.display = 'flex';
+            document.getElementById('infusionDate').value = new Date().toLocaleDateString();
+        }
+
+        function addInfusionIngredientRow() {
+            const tbody = document.getElementById('infusionIngredientTableBody');
+            const newRow = document.createElement('tr');
+            newRow.className = 'infusion-ingredient-row';
+            newRow.innerHTML = `
+                <td><input type="text" placeholder="Ingredient" style="width:100%; padding:0.5rem;" required></td>
+                <td><input type="number" placeholder="500" step="0.1" style="width:100%; padding:0.5rem;" required></td>
+                <td><input type="number" placeholder="0" step="0.01" style="width:100%; padding:0.5rem;" required></td>
+                <td><input type="number" placeholder="50" step="0.1" style="width:100%; padding:0.5rem;" required></td>
+                <td><input type="number" readonly style="width:100%; padding:0.5rem; background:var(--light);" class="infusion-pour-cost"></td>
+                <td><input type="number" placeholder="47" step="0.1" style="width:100%; padding:0.5rem;" required></td>
+                <td><button type="button" onclick="removeInfusionIngredientRow(this)"><i class="fas fa-trash"></i></button></td>
+            `;
+            tbody.appendChild(newRow);
+        }
+
+        function removeInfusionIngredientRow(button) {
+            const row = button.closest('tr');
+            const tbody = row.parentNode;
+            if (tbody.children.length > 1) {
+                row.remove();
+            }
+        }
+
+        function saveNewInfusion(event) {
+            event.preventDefault();
+            
+            const rows = document.querySelectorAll('#infusionIngredientTableBody .infusion-ingredient-row');
+            const ingredients = [];
+            
+            rows.forEach(row => {
+                const inputs = row.querySelectorAll('input');
+                ingredients.push({
+                    ingredient: inputs[0].value,
+                    volume: parseFloat(inputs[1].value),
+                    cost: parseFloat(inputs[2].value),
+                    pour: parseFloat(inputs[3].value),
+                    pourCost: parseFloat(inputs[4].value) || 0,
+                    abv: parseFloat(inputs[5].value) || 0
+                });
+            });
+            
+            const newInfusion = {
+                id: AppState.nextInfusionId++,
+                name: document.getElementById('infusionName').value,
+                author: document.getElementById('infusionAuthor').value,
+                date: document.getElementById('infusionDate').value,
+                ingredients,
+                instructions: document.getElementById('infusionInstructions').value,
+                allergens: document.getElementById('infusionAllergens').value,
+                notes: document.getElementById('infusionNotes').value
+            };
+            
+            AppState.infusions.push(newInfusion);
+            persistState();
+            closeModal('addInfusionModal');
+            renderInfusionList();
+            showToast(`✅ ${newInfusion.name} created`);
+        }
+
+        // Distillation Functions
+        function openAddDistillationModal() {
+            document.getElementById('addDistillationModal').style.display = 'flex';
+            document.getElementById('distillationDate').value = new Date().toLocaleDateString();
+        }
+
+        function addDistillationIngredientRow() {
+            const tbody = document.getElementById('distillationIngredientTableBody');
+            const newRow = document.createElement('tr');
+            newRow.className = 'distillation-ingredient-row';
+            newRow.innerHTML = `
+                <td><input type="text" placeholder="Botanical" style="width:100%; padding:0.5rem;" required></td>
+                <td><input type="number" placeholder="1000" step="0.1" style="width:100%; padding:0.5rem;" required></td>
+                <td><input type="number" placeholder="0" step="0.01" style="width:100%; padding:0.5rem;" required></td>
+                <td><input type="number" placeholder="30" step="0.1" style="width:100%; padding:0.5rem;" required></td>
+                <td><input type="number" readonly style="width:100%; padding:0.5rem; background:var(--light);" class="distillation-pour-cost"></td>
+                <td><input type="number" placeholder="40" step="0.1" style="width:100%; padding:0.5rem;" required></td>
+                <td><button type="button" onclick="removeDistillationIngredientRow(this)"><i class="fas fa-trash"></i></button></td>
+            `;
+            tbody.appendChild(newRow);
+        }
+
+        function removeDistillationIngredientRow(button) {
+            const row = button.closest('tr');
+            const tbody = row.parentNode;
+            if (tbody.children.length > 1) {
+                row.remove();
+            }
+        }
+
+        function saveNewDistillation(event) {
+            event.preventDefault();
+            
+            const rows = document.querySelectorAll('#distillationIngredientTableBody .distillation-ingredient-row');
+            const botanicals = [];
+            
+            rows.forEach(row => {
+                const inputs = row.querySelectorAll('input');
+                botanicals.push({
+                    ingredient: inputs[0].value,
+                    volume: parseFloat(inputs[1].value),
+                    cost: parseFloat(inputs[2].value),
+                    pour: parseFloat(inputs[3].value),
+                    pourCost: parseFloat(inputs[4].value) || 0,
+                    abv: parseFloat(inputs[5].value) || 0
+                });
+            });
+            
+            const newDistillation = {
+                id: AppState.nextDistillationId++,
+                name: document.getElementById('distillationName').value,
+                author: document.getElementById('distillationAuthor').value,
+                date: document.getElementById('distillationDate').value,
+                botanicals,
+                instructions: document.getElementById('distillationInstructions').value,
+                allergens: document.getElementById('distillationAllergens').value,
+                notes: document.getElementById('distillationNotes').value
+            };
+            
+            AppState.distillations.push(newDistillation);
+            persistState();
+            closeModal('addDistillationModal');
+            renderDistillationList();
+            showToast(`✅ ${newDistillation.name} created`);
+        }
+
+        // Modal Functions
+        function closeModal(modalId) {
+            document.getElementById(modalId).style.display = 'none';
+        }
+
+        function closePDFPreview() {
+            document.getElementById('pdfPreviewModal').style.display = 'none';
+        }
+
+        // Toast
+        function showToast(message) {
+            const toast = document.createElement('div');
+            toast.className = 'toast';
+            toast.innerHTML = `<i class="fas fa-info-circle"></i> ${message}`;
+            document.getElementById('toastContainer').appendChild(toast);
+            setTimeout(() => toast.remove(), 3000);
+        }
+
+        // PDF Functions (simplified)
+        function previewMenuPDF(venueId) {
+            showToast('PDF preview coming soon');
+        }
+
+        function previewSpecsPDF(venueId) {
+            showToast('PDF preview coming soon');
+        }
+
+        function printSelectedSpecsPDF(venueId) {
+            showToast('Print coming soon');
+        }
+
+        function downloadPDFFromPreview() {
+            showToast('Download coming soon');
+        }
+
+        function sharePDFFromPreview() {
+            showToast('Share coming soon');
+        }
+
+        // Initialize
+        renderDashboard();
+    </script>
+</body>
+</html>
